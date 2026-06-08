@@ -8,34 +8,55 @@ export async function GET() {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  // Verificar se usuário já existe
-  const { data: existing } = await supabase.auth.admin.listUsers()
-  const found = existing?.users?.find(u => u.email === 'marcions27@gmail.com')
-
-  if (found) {
-    // Resetar senha
-    const { data, error } = await supabase.auth.admin.updateUserById(found.id, {
-      password: 'PriceIQ@2026',
-      email_confirm: true,
-    })
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-    return NextResponse.json({ ok: true, action: 'password_reset', id: data.user.id })
+  if (!url || !key) {
+    return NextResponse.json({ error: 'missing env vars', url: !!url, key: !!key })
   }
 
-  // Criar usuário novo
-  const { data, error } = await supabase.auth.admin.createUser({
-    email: 'marcions27@gmail.com',
-    password: 'PriceIQ@2026',
-    email_confirm: true,
-    user_metadata: { role: 'admin', name: 'Admin' },
-  })
+  try {
+    const supabase = createClient(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json({ ok: true, action: 'created', id: data.user.id })
+    // Tentar listar usuários
+    const listResult = await supabase.auth.admin.listUsers()
+
+    if (listResult.error) {
+      return NextResponse.json({
+        step: 'listUsers',
+        error: listResult.error.message,
+        status: listResult.error.status
+      })
+    }
+
+    const found = listResult.data?.users?.find(u => u.email === 'marcions27@gmail.com')
+
+    if (found) {
+      const { data, error } = await supabase.auth.admin.updateUserById(found.id, {
+        password: 'PriceIQ@2026',
+        email_confirm: true,
+      })
+      if (error) return NextResponse.json({ step: 'update', error: error.message })
+      return NextResponse.json({ ok: true, action: 'password_reset', id: data.user.id })
+    }
+
+    const { data, error } = await supabase.auth.admin.createUser({
+      email: 'marcions27@gmail.com',
+      password: 'PriceIQ@2026',
+      email_confirm: true,
+      user_metadata: { role: 'admin', name: 'Admin' },
+    })
+
+    if (error) return NextResponse.json({ step: 'create', error: error.message })
+    return NextResponse.json({ ok: true, action: 'created', id: data.user.id })
+
+  } catch (e: unknown) {
+    return NextResponse.json({
+      error: 'exception',
+      message: e instanceof Error ? e.message : String(e),
+      url
+    })
+  }
 }
