@@ -1,67 +1,88 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as http from 'node:http'
 
 // Proxy para o Supabase — contorna o firewall do Srv05 porta 8000
-// O servidor (Srv03) alcança o Supabase via IP + Host header correto
-const SUPABASE_INTERNAL_IP = 'http://20.115.53.142'
-const SUPABASE_HOST = 'supabasekong-l11r8297ciakbsefhwt06l9v.srv05.eastus.cloudapp.azure.com.sslip.io'
+// Traefik no Srv05 responde na porta 80 com o Host header correto
+const SUPABASE_HOST_IP = '20.115.53.142'
+const SUPABASE_HOST_HEADER = 'supabasekong-l11r8297ciakbsefhwt06l9v.srv05.eastus.cloudapp.azure.com.sslip.io'
 
-// Headers que não devem ser repassados
 const HOP_BY_HOP = new Set([
   'connection', 'keep-alive', 'transfer-encoding', 'te',
-  'trailer', 'upgrade', 'proxy-authorization', 'proxy-authenticate',
+  'trailer', 'upgrade', 'proxy-authorization', 'proxy-authenticate', 'host',
 ])
+
+function httpRequest(options: http.RequestOptions, body?: Buffer): Promise<{ status: number; headers: Record<string, string | string[]>; body: Buffer }> {
+  return new Promise((resolve, reject) => {
+    const req = http.request(options, (res) => {
+      const chunks: Buffer[] = []
+      res.on('data', (chunk) => chunks.push(chunk))
+      res.on('end', () => {
+        resolve({
+          status: res.statusCode ?? 200,
+          headers: res.headers as Record<string, string | string[]>,
+          body: Buffer.concat(chunks),
+        })
+      })
+    })
+    req.on('error', reject)
+    req.setTimeout(30000, () => { req.destroy(new Error('timeout')) })
+    if (body) req.write(body)
+    req.end()
+  })
+}
 
 async function proxyRequest(req: NextRequest, params: { path: string[] }) {
   const path = params.path.join('/')
   const search = req.nextUrl.search
-  const targetUrl = `${SUPABASE_INTERNAL_IP}/${path}${search}`
 
-  // Copiar headers relevantes
-  const headers = new Headers()
-  headers.set('Host', SUPABASE_HOST)
-
+  // Copiar headers relevantes (exceto hop-by-hop e host)
+  const headers: http.OutgoingHttpHeaders = {
+    host: SUPABASE_HOST_HEADER,
+  }
   for (const [key, value] of req.headers) {
-    if (!HOP_BY_HOP.has(key.toLowerCase()) && key.toLowerCase() !== 'host') {
-      headers.set(key, value)
+    if (!HOP_BY_HOP.has(key.toLowerCase())) {
+      headers[key] = value
     }
   }
 
-  // Ler body para métodos que o têm
+  // Body
   const hasBody = !['GET', 'HEAD', 'DELETE'].includes(req.method)
-  const body = hasBody ? await req.arrayBuffer() : undefined
+  const bodyBuf = hasBody ? Buffer.from(await req.arrayBuffer()) : undefined
 
   try {
-    const upstream = await fetch(targetUrl, {
-      method: req.method,
-      headers,
-      body: body ? body : undefined,
-      redirect: 'manual',
-      signal: AbortSignal.timeout(30000),
-    })
+    const result = await httpRequest(
+      {
+        hostname: SUPABASE_HOST_IP,
+        port: 80,
+        path: `/${path}${search}`,
+        method: req.method,
+        headers,
+      },
+      bodyBuf
+    )
 
-    // Construir response
     const resHeaders = new Headers()
-    for (const [key, value] of upstream.headers) {
+    for (const [key, value] of Object.entries(result.headers)) {
       if (!HOP_BY_HOP.has(key.toLowerCase())) {
-        resHeaders.set(key, value)
+        if (Array.isArray(value)) {
+          value.forEach(v => resHeaders.append(key, v))
+        } else if (value) {
+          resHeaders.set(key, value)
+        }
       }
     }
-
-    // Permitir CORS para o browser
     resHeaders.set('Access-Control-Allow-Origin', '*')
     resHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
     resHeaders.set('Access-Control-Allow-Headers', 'authorization, apikey, content-type, x-client-info, prefer')
     resHeaders.set('Access-Control-Expose-Headers', 'content-range, x-total-count')
 
-    const resBody = await upstream.arrayBuffer()
-
-    return new NextResponse(resBody, {
-      status: upstream.status,
+    return new NextResponse(result.body, {
+      status: result.status,
       headers: resHeaders,
     })
   } catch (e: unknown) {
     return NextResponse.json(
-      { error: 'Supabase proxy error', message: e instanceof Error ? e.message : String(e) },
+      { error: 'proxy_error', message: e instanceof Error ? e.message : String(e) },
       { status: 502 }
     )
   }
