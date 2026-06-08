@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "./satoshi.css";
+/* Satoshi font via CDN — evita dependência de arquivos locais */
 
 @custom-variant dark (&:is(.dark *));
 
