@@ -17,6 +17,18 @@ export const NAV_DATA = [
         items: [],
       },
       {
+        title: "Filamentos",
+        url: "/filamentos",
+        icon: Icons.LayersIcon,
+        items: [],
+      },
+      {
+        title: "Impressoras",
+        url: "/impressoras",
+        icon: Icons.PrinterIcon,
+        items: [],
+      },
+      {
         title: "Categorias",
         url: "/categorias",
         icon: Icons.TagIcon,
