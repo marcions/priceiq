@@ -1,88 +1,100 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as http from 'node:http'
 
-// Proxy para o Supabase — contorna o firewall do Srv05 porta 8000
-// Traefik no Srv05 responde na porta 80 com o Host header correto
-const SUPABASE_HOST_IP = '20.115.53.142'
-const SUPABASE_HOST_HEADER = 'supabasekong-l11r8297ciakbsefhwt06l9v.srv05.eastus.cloudapp.azure.com.sslip.io'
+// Proxy Supabase — Traefik no Srv05 porta 80 com Host header correto
+const SUPABASE_IP = '20.115.53.142'
+const SUPABASE_HOST = 'supabasekong-l11r8297ciakbsefhwt06l9v.srv05.eastus.cloudapp.azure.com.sslip.io'
 
-const HOP_BY_HOP = new Set([
+// Headers que o proxy NÃO deve copiar do request original
+const SKIP_HEADERS = new Set([
   'connection', 'keep-alive', 'transfer-encoding', 'te',
-  'trailer', 'upgrade', 'proxy-authorization', 'proxy-authenticate', 'host',
+  'trailer', 'upgrade', 'proxy-authorization', 'proxy-authenticate',
+  'host', // substituído pelo SUPABASE_HOST
 ])
 
-function httpRequest(options: http.RequestOptions, body?: Buffer): Promise<{ status: number; headers: Record<string, string | string[]>; body: Buffer }> {
+function httpRequest(
+  method: string,
+  path: string,
+  forwardHeaders: Record<string, string>,
+  body?: Buffer
+): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: Buffer }> {
   return new Promise((resolve, reject) => {
+    const options: http.RequestOptions = {
+      hostname: SUPABASE_IP,
+      port: 80,
+      path,
+      method,
+      headers: {
+        host: SUPABASE_HOST, // OBRIGATÓRIO — Traefik roteia por este header
+        ...forwardHeaders,
+      },
+    }
+
     const req = http.request(options, (res) => {
       const chunks: Buffer[] = []
-      res.on('data', (chunk) => chunks.push(chunk))
-      res.on('end', () => {
-        resolve({
-          status: res.statusCode ?? 200,
-          headers: res.headers as Record<string, string | string[]>,
-          body: Buffer.concat(chunks),
-        })
-      })
+      res.on('data', (chunk: Buffer) => chunks.push(chunk))
+      res.on('end', () => resolve({
+        status: res.statusCode ?? 200,
+        headers: res.headers,
+        body: Buffer.concat(chunks),
+      }))
     })
+
     req.on('error', reject)
     req.setTimeout(30000, () => { req.destroy(new Error('timeout')) })
-    if (body) req.write(body)
+
+    if (body && body.length > 0) req.write(body)
     req.end()
   })
 }
 
 async function proxyRequest(req: NextRequest, params: { path: string[] }) {
-  const path = params.path.join('/')
-  const search = req.nextUrl.search
+  const supabasePath = `/${params.path.join('/')}${req.nextUrl.search}`
 
-  // Copiar headers relevantes (exceto hop-by-hop e host)
-  const headers: http.OutgoingHttpHeaders = {
-    host: SUPABASE_HOST_HEADER,
-  }
+  // Copiar apenas headers seguros do request original (sem hop-by-hop e sem host)
+  const forwardHeaders: Record<string, string> = {}
   for (const [key, value] of req.headers) {
-    if (!HOP_BY_HOP.has(key.toLowerCase())) {
-      headers[key] = value
+    if (!SKIP_HEADERS.has(key.toLowerCase())) {
+      forwardHeaders[key] = value
     }
   }
 
-  // Body
-  const hasBody = !['GET', 'HEAD', 'DELETE'].includes(req.method)
+  // Body para métodos que o têm
+  const hasBody = req.method !== 'GET' && req.method !== 'HEAD'
   const bodyBuf = hasBody ? Buffer.from(await req.arrayBuffer()) : undefined
 
   try {
-    const result = await httpRequest(
-      {
-        hostname: SUPABASE_HOST_IP,
-        port: 80,
-        path: `/${path}${search}`,
-        method: req.method,
-        headers,
-      },
-      bodyBuf
-    )
+    const result = await httpRequest(req.method, supabasePath, forwardHeaders, bodyBuf)
 
-    const resHeaders = new Headers()
+    // Montar headers da resposta
+    const resHeaders = new Headers({
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info, prefer',
+      'Access-Control-Expose-Headers': 'content-range, x-total-count',
+    })
+
+    const SKIP_RES = new Set(['connection', 'keep-alive', 'transfer-encoding', 'access-control-allow-origin'])
     for (const [key, value] of Object.entries(result.headers)) {
-      if (!HOP_BY_HOP.has(key.toLowerCase())) {
+      if (!SKIP_RES.has(key.toLowerCase()) && value) {
         if (Array.isArray(value)) {
           value.forEach(v => resHeaders.append(key, v))
-        } else if (value) {
+        } else {
           resHeaders.set(key, value)
         }
       }
     }
-    resHeaders.set('Access-Control-Allow-Origin', '*')
-    resHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-    resHeaders.set('Access-Control-Allow-Headers', 'authorization, apikey, content-type, x-client-info, prefer')
-    resHeaders.set('Access-Control-Expose-Headers', 'content-range, x-total-count')
 
-    return new NextResponse(result.body.buffer as ArrayBuffer, {
+    return new NextResponse(result.body.buffer.slice(
+      result.body.byteOffset,
+      result.body.byteOffset + result.body.byteLength
+    ) as ArrayBuffer, {
       status: result.status,
       headers: resHeaders,
     })
   } catch (e: unknown) {
     return NextResponse.json(
-      { error: 'proxy_error', message: e instanceof Error ? e.message : String(e) },
+      { error: 'proxy_error', detail: e instanceof Error ? e.message : String(e) },
       { status: 502 }
     )
   }
