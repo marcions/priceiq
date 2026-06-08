@@ -1,10 +1,10 @@
 // Gerenciamento de tokens Bling no Supabase
 
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { refreshAccessToken } from './client'
 
 export async function getValidToken(): Promise<string | null> {
-  const supabase = await createClient()
+  const supabase = await createServiceClient()
 
   const { data: token } = await (supabase as any)
     .from('bling_tokens')
@@ -50,7 +50,7 @@ export async function saveToken(tokenData: {
   scope?: string
   token_type?: string
 }) {
-  const supabase = await createClient()
+  const supabase = await createServiceClient()
   const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000)
 
   // Upsert: sempre mantém apenas 1 token (última conexão)
