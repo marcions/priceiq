@@ -76,7 +76,7 @@ async function proxyRequest(req: NextRequest, params: { path: string[] }) {
     resHeaders.set('Access-Control-Allow-Headers', 'authorization, apikey, content-type, x-client-info, prefer')
     resHeaders.set('Access-Control-Expose-Headers', 'content-range, x-total-count')
 
-    return new NextResponse(result.body, {
+    return new NextResponse(result.body.buffer as ArrayBuffer, {
       status: result.status,
       headers: resHeaders,
     })
