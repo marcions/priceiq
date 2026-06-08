@@ -5,6 +5,13 @@ import * as http from 'node:http'
 const SUPABASE_IP = '20.51.158.208'
 const SUPABASE_HOST = 'supabasekong-m13buf3hxxtgq94jhatkirlk.20.51.158.208.sslip.io'
 
+// Connection pool: reutiliza sockets TCP entre requests (reduz latência ~50-80ms por call)
+const agent = new http.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 30000,
+  maxSockets: 20,
+})
+
 // Headers que o proxy NÃO deve copiar do request original
 const SKIP_HEADERS = new Set([
   'connection', 'keep-alive', 'transfer-encoding', 'te',
@@ -24,6 +31,7 @@ function httpRequest(
       port: 80,
       path,
       method,
+      agent, // reutiliza conexões TCP (keep-alive)
       headers: {
         host: SUPABASE_HOST, // OBRIGATÓRIO — Traefik roteia por este header
         ...forwardHeaders,
