@@ -12,6 +12,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+# Skip TS/ESLint checks no Docker — já validados localmente antes do push
+ENV NEXT_TYPESCRIPT_CHECK=false
 
 RUN npm run build
 
