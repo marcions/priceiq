@@ -2,7 +2,8 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# Instalar TODAS as deps (incluindo devDependencies como @tailwindcss/postcss)
+RUN npm ci --include=dev
 
 # ─── Stage 2: builder ────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
@@ -10,9 +11,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Envs de build (placeholders — sobrescritos pelas vars do Coolify em runtime)
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
 
 RUN npm run build
 
