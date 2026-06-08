@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as http from 'node:http'
 
 // Proxy Supabase — Traefik no Srv05 porta 80 com Host header correto
-const SUPABASE_IP = '20.115.53.142'
-const SUPABASE_HOST = 'supabasekong-l11r8297ciakbsefhwt06l9v.srv05.eastus.cloudapp.azure.com.sslip.io'
+const SUPABASE_IP = '20.51.158.208'
+const SUPABASE_HOST = 'supabasekong-m13buf3hxxtgq94jhatkirlk.20.51.158.208.sslip.io'
 
 // Headers que o proxy NÃO deve copiar do request original
 const SKIP_HEADERS = new Set([
