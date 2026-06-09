@@ -261,7 +261,7 @@ export function ProdutoForm({
 
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1.5 min-w-0">
-            <Label htmlFor="custo_vigente" className="text-xs">Custo Vigente (R$)</Label>
+            <Label htmlFor="custo_vigente" className="text-xs whitespace-nowrap">Custo (R$)</Label>
             <Input
               id="custo_vigente"
               type="number"
@@ -274,7 +274,7 @@ export function ProdutoForm({
           </div>
 
           <div className="space-y-1.5 min-w-0">
-            <Label htmlFor="preco_venda" className="text-xs">Preço de Venda (R$)</Label>
+            <Label htmlFor="preco_venda" className="text-xs whitespace-nowrap">Venda (R$)</Label>
             <Input
               id="preco_venda"
               type="number"
@@ -287,7 +287,7 @@ export function ProdutoForm({
           </div>
 
           <div className="space-y-1.5 min-w-0">
-            <Label htmlFor="preco_minimo" className="text-xs">Preço Mínimo (R$)</Label>
+            <Label htmlFor="preco_minimo" className="text-xs whitespace-nowrap">Mínimo (R$)</Label>
             <Input
               id="preco_minimo"
               type="number"
