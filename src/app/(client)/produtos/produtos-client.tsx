@@ -39,6 +39,7 @@ export type ProductWithRelations = ProductRow & {
 }
 
 type FilterAtivo = 'todos' | 'ativos' | 'inativos'
+type FilterFonte = 'todos' | 'bling' | 'local'
 
 const BLING_STATUS_CONFIG = {
   synced: { label: 'Sincronizado', className: 'bg-green-100 text-green-800' },
@@ -76,6 +77,7 @@ export function ProdutosClient({
 }: ProdutosClientProps) {
   const [search, setSearch] = useState('')
   const [filterAtivo, setFilterAtivo] = useState<FilterAtivo>('ativos')
+  const [filterFonte, setFilterFonte] = useState<FilterFonte>('todos')
   const [formOpen, setFormOpen] = useState(false)
   const [editProduto, setEditProduto] = useState<ProductWithRelations | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ProductWithRelations | null>(null)
@@ -92,7 +94,12 @@ export function ProdutosClient({
       (filterAtivo === 'ativos' && p.ativo) ||
       (filterAtivo === 'inativos' && !p.ativo)
 
-    return matchSearch && matchAtivo
+    const matchFonte =
+      filterFonte === 'todos' ||
+      (filterFonte === 'bling' && p.fonte === 'bling') ||
+      (filterFonte === 'local' && p.fonte !== 'bling')
+
+    return matchSearch && matchAtivo && matchFonte
   })
 
   function openNew() {
@@ -133,19 +140,39 @@ export function ProdutosClient({
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
             <CardTitle className="text-xl">Produtos</CardTitle>
-            <Button onClick={openNew} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Produto
-            </Button>
+            {filterFonte !== 'bling' && (
+              <Button onClick={openNew} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Produto
+              </Button>
+            )}
           </div>
 
-          <div className="flex items-center gap-3 mt-4">
+          <div className="flex flex-wrap items-center gap-3 mt-4">
             <Input
               placeholder="Buscar por SKU ou nome..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-xs"
             />
+            {/* Filtro de Origem */}
+            <div className="flex gap-1">
+              {([
+                { key: 'todos', label: 'Todos' },
+                { key: 'local', label: 'Local' },
+                { key: 'bling', label: 'Bling' },
+              ] as { key: FilterFonte; label: string }[]).map(({ key, label }) => (
+                <Button
+                  key={key}
+                  variant={filterFonte === key ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilterFonte(key)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+            {/* Filtro de Status */}
             <div className="flex gap-1">
               {(['todos', 'ativos', 'inativos'] as FilterAtivo[]).map((f) => (
                 <Button
@@ -190,6 +217,7 @@ export function ProdutosClient({
                   <TableHead className="text-right">Custo (R$)</TableHead>
                   <TableHead className="text-right">Preço Venda (R$)</TableHead>
                   <TableHead className="text-right">Margem</TableHead>
+                  <TableHead>Origem</TableHead>
                   <TableHead>Status Bling</TableHead>
                   <TableHead>Ativo</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -213,6 +241,14 @@ export function ProdutosClient({
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {calcMargem(p.custo_vigente, p.preco_venda_vigente)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={p.fonte === 'bling'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                          : 'bg-gray-100 text-gray-700 dark:bg-dark-3 dark:text-dark-5'
+                        }>
+                          {p.fonte === 'bling' ? 'Bling' : 'Local'}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge className={blingConfig.className}>{blingConfig.label}</Badge>

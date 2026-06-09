@@ -17,14 +17,14 @@ export const NAV_DATA = [
         items: [],
       },
       {
-        title: "Filamentos",
-        url: "/filamentos",
+        title: "Insumos",
+        url: "/insumos",
         icon: Icons.LayersIcon,
         items: [],
       },
       {
-        title: "Impressoras",
-        url: "/impressoras",
+        title: "Equipamentos",
+        url: "/equipamentos",
         icon: Icons.PrinterIcon,
         items: [],
       },

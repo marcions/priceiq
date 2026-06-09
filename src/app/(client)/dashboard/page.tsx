@@ -61,8 +61,8 @@ export default async function DashboardPage() {
 
   const kpis = [
     { title: 'Produtos', value: totalProdutos, icon: Package, color: 'text-blue-500', href: '/produtos', sub: 'no catálogo' },
-    { title: 'Filamentos', value: totalFilamentos, icon: Layers, color: 'text-green-500', href: '/filamentos', sub: 'materiais cadastrados' },
-    { title: 'Impressoras', value: totalImpressoras, icon: Printer, color: 'text-purple-500', href: '/impressoras', sub: `R$ ${fmt(valorParque, 0)} em parque` },
+    { title: 'Insumos', value: totalFilamentos, icon: Layers, color: 'text-green-500', href: '/insumos', sub: 'materiais cadastrados' },
+    { title: 'Equipamentos', value: totalImpressoras, icon: Printer, color: 'text-purple-500', href: '/equipamentos', sub: `R$ ${fmt(valorParque, 0)} em parque` },
     { title: 'Categorias', value: totalCategorias, icon: Tag, color: 'text-orange-500', href: '/categorias', sub: 'de produto' },
   ]
 
