@@ -37,7 +37,7 @@ export default async function DashboardPage() {
     pgquery<{ sku: string; nome: string; custo_vigente: number | null; preco_venda_vigente: number | null; category_nome: string | null }>(`
       SELECT p.sku, p.nome, p.custo_vigente, p.preco_venda_vigente, c.nome AS category_nome
       FROM products p
-      LEFT JOIN categories c ON c.id = p.category_id
+      LEFT JOIN categories c ON c.id = p.categoria_id
       WHERE p.ativo = true AND p.preco_venda_vigente IS NOT NULL
       ORDER BY p.preco_venda_vigente DESC
       LIMIT 8

@@ -29,7 +29,7 @@ function LogOutIcon() {
   );
 }
 
-export function UserInfo({ user }: { user: User }) {
+export function UserInfo({ user }: { user: User | null }) {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -49,8 +49,8 @@ export function UserInfo({ user }: { user: User }) {
     }
   }
 
-  const name = user.user_metadata?.name || user.email?.split("@")[0] || "Usuário";
-  const email = user.email || "";
+  const name = user?.user_metadata?.name || user?.email?.split("@")[0] || "Usuário";
+  const email = user?.email || "";
   const initials = name.slice(0, 2).toUpperCase();
 
   return (

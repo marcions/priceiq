@@ -18,8 +18,8 @@ export default async function ProdutosPage() {
                c.nome AS category_nome,
                s.nome AS supplier_nome
         FROM products p
-        LEFT JOIN categories c ON c.id = p.category_id
-        LEFT JOIN suppliers  s ON s.id = p.supplier_id
+        LEFT JOIN categories c ON c.id = p.categoria_id
+        LEFT JOIN suppliers  s ON s.id = p.fornecedor_principal_id
         ORDER BY p.nome
       `).then((rows) =>
         rows.map((r) => ({
