@@ -5,8 +5,10 @@ import { Header } from '@/components/Layouts/header'
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  // getSession() lê o JWT dos cookies localmente — sem chamada de rede
+  // Evita falha de hairpin NAT no Docker ao chamar a própria URL pública
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) redirect('/login')
 
   return (
     <div className="flex min-h-screen">
