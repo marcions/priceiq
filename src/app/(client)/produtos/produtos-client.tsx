@@ -25,8 +25,8 @@ import {
 import { ProdutoForm } from '@/components/produtos/produto-form'
 import { deleteProduto } from './actions'
 import type { Database } from '@/lib/supabase/types'
-import { Plus, Pencil, Trash2, Package } from 'lucide-react'
-import { fmtMoeda, fmtMargem } from '@/lib/format'
+import { Plus, Pencil, Trash2, Package, Calculator, History } from 'lucide-react'
+import { fmtMoeda, fmtMargem, fmtNum } from '@/lib/format'
 
 type ProductRow = Database['public']['Tables']['products']['Row']
 type CategoryRow = Pick<Database['public']['Tables']['categories']['Row'], 'id' | 'nome'>
@@ -53,6 +53,24 @@ const BLING_STATUS_CONFIG = {
 const formatCurrency = fmtMoeda
 const calcMargem = fmtMargem
 
+type MetodoCusto = 'WEIGHTED_AVG' | 'SIMPLE_AVG' | 'LAST'
+
+interface Snapshot {
+  id: string
+  custo_base: string
+  custo_total: string
+  metodo_usado: string
+  pedidos_count: string
+  triggered_by: string
+  calculado_em: string
+}
+
+const METODO_LABEL: Record<string, string> = {
+  WEIGHTED_AVG: 'CMPC (pond.)',
+  SIMPLE_AVG: 'Média simples',
+  LAST: 'Último preço',
+}
+
 interface ProdutosClientProps {
   produtos: ProductWithRelations[]
   categorias: CategoryRow[]
@@ -75,6 +93,48 @@ export function ProdutosClient({
   const [editProduto, setEditProduto] = useState<ProductWithRelations | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ProductWithRelations | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  // Motor de custo por produto
+  const [calculando, setCalculando] = useState<string | null>(null)
+  const [custoMetodo, setCustoMetodo] = useState<MetodoCusto>('WEIGHTED_AVG')
+  const [historicoProduto, setHistoricoProduto] = useState<ProductWithRelations | null>(null)
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([])
+  const [loadingSnapshots, setLoadingSnapshots] = useState(false)
+
+  async function handleCalcularCusto(p: ProductWithRelations) {
+    if (calculando === p.id) return
+    setCalculando(p.id)
+    const loadingId = toast.loading(`Calculando custo de "${p.nome}"...`)
+    try {
+      const res = await fetch(`/api/produtos/${p.id}/calcular-custo`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ metodo: custoMetodo }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erro desconhecido')
+      toast.success(data.message, { id: loadingId })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao calcular custo', { id: loadingId })
+    } finally {
+      setCalculando(null)
+    }
+  }
+
+  async function openHistorico(p: ProductWithRelations) {
+    setHistoricoProduto(p)
+    setSnapshots([])
+    setLoadingSnapshots(true)
+    try {
+      const res = await fetch(`/api/produtos/${p.id}/snapshots`)
+      const data = await res.json()
+      setSnapshots(data.snapshots ?? [])
+    } catch {
+      toast.error('Erro ao carregar histórico')
+    } finally {
+      setLoadingSnapshots(false)
+    }
+  }
 
   const filtered = produtos.filter((p) => {
     const matchSearch =
@@ -141,7 +201,24 @@ export function ProdutosClient({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 mt-4">
+          {/* Seletor de método de custo */}
+          <div className="flex items-center gap-2 mt-4">
+            <Calculator className="h-4 w-4 text-gray-6 shrink-0" />
+            <span className="text-xs text-gray-6">Método de custo:</span>
+            {(['WEIGHTED_AVG', 'SIMPLE_AVG', 'LAST'] as MetodoCusto[]).map(m => (
+              <Button
+                key={m}
+                variant={custoMetodo === m ? 'default' : 'outline'}
+                size="sm"
+                className="text-xs h-7 px-2"
+                onClick={() => setCustoMetodo(m)}
+              >
+                {METODO_LABEL[m]}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 mt-2">
             <Input
               placeholder="Buscar por SKU ou nome..."
               value={search}
@@ -213,6 +290,7 @@ export function ProdutosClient({
                   <TableHead>Origem</TableHead>
                   <TableHead>Status Bling</TableHead>
                   <TableHead>Ativo</TableHead>
+                  <TableHead className="text-right">Custo</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -256,6 +334,29 @@ export function ProdutosClient({
                         >
                           {p.ativo ? 'Ativo' : 'Inativo'}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-green-600 hover:text-green-700"
+                            title={`Calcular custo (${METODO_LABEL[custoMetodo]})`}
+                            onClick={() => handleCalcularCusto(p)}
+                            disabled={calculando === p.id}
+                          >
+                            <Calculator className={`h-4 w-4 ${calculando === p.id ? 'animate-pulse' : ''}`} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-500 hover:text-blue-600"
+                            title="Histórico de snapshots de custo"
+                            onClick={() => openHistorico(p)}
+                          >
+                            <History className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div
@@ -308,6 +409,70 @@ export function ProdutosClient({
             pricingPolicies={pricingPolicies}
             onSuccess={handleFormSuccess}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Histórico de Snapshots de Custo */}
+      <Dialog open={!!historicoProduto} onOpenChange={(open) => !open && setHistoricoProduto(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-blue-500" />
+              Histórico de Custo
+            </DialogTitle>
+            <DialogDescription>
+              {historicoProduto?.nome} · {historicoProduto?.sku}
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingSnapshots ? (
+            <div className="py-8 text-center text-sm text-gray-6">Carregando...</div>
+          ) : snapshots.length === 0 ? (
+            <div className="py-8 text-center text-sm text-gray-6">
+              Nenhum snapshot de custo encontrado para este produto.
+              <br />
+              <span className="text-xs">Use o botão <Calculator className="h-3 w-3 inline" /> para calcular o primeiro custo.</span>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-stroke dark:border-dark-3 text-left">
+                  <th className="py-2 pr-4 font-semibold text-dark dark:text-white">Data</th>
+                  <th className="py-2 pr-4 font-semibold text-dark dark:text-white">Método</th>
+                  <th className="py-2 pr-4 font-semibold text-dark dark:text-white text-right">Custo Base</th>
+                  <th className="py-2 pr-4 font-semibold text-dark dark:text-white text-right">Custo Total</th>
+                  <th className="py-2 font-semibold text-dark dark:text-white text-right">Pedidos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {snapshots.map((s, i) => (
+                  <tr
+                    key={s.id}
+                    className={`border-b border-stroke dark:border-dark-3 ${i === 0 ? 'bg-green-50 dark:bg-green-900/10' : ''}`}
+                  >
+                    <td className="py-2 pr-4 text-gray-6 text-xs">
+                      {new Date(s.calculado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                      {i === 0 && <span className="ml-1 text-green-600 font-semibold">(atual)</span>}
+                    </td>
+                    <td className="py-2 pr-4">
+                      <Badge className="bg-blue-100 text-blue-800 text-xs">
+                        {METODO_LABEL[s.metodo_usado] ?? s.metodo_usado}
+                      </Badge>
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums font-medium text-dark dark:text-white">
+                      R$ {fmtNum(s.custo_base, 4)}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums font-semibold text-primary">
+                      R$ {fmtNum(s.custo_total, 4)}
+                    </td>
+                    <td className="py-2 text-right text-gray-6 text-xs">
+                      {s.pedidos_count} pedido{Number(s.pedidos_count) !== 1 ? 's' : ''}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </DialogContent>
       </Dialog>
 

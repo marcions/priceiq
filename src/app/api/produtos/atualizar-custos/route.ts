@@ -1,82 +1,72 @@
 import { NextResponse } from 'next/server'
-import { pgquery, pgesc } from '@/lib/db/query'
+import { pgquery } from '@/lib/db/query'
+import { calcularCustoProduto, type MetodoCusto } from '@/lib/custo/calcular'
+
+const METODOS_VALIDOS: MetodoCusto[] = ['LAST', 'SIMPLE_AVG', 'WEIGHTED_AVG']
 
 /**
  * POST /api/produtos/atualizar-custos
  *
- * Calcula o custo médio ponderado (CMPC) de cada produto com base nos
- * itens de pedidos de compra importados do Bling e atualiza custo_vigente.
+ * Recalcula o custo de TODOS os produtos ativos que possuem pedidos de
+ * compra importados, gerando cost_snapshots imutáveis.
  *
- * Fórmula: custo = SUM(quantidade × preco_unitario) / SUM(quantidade)
- *
- * Somente atualiza produtos que têm ao menos 1 item de pedido com
- * quantidade > 0 e preco_unitario > 0.
+ * Body (opcional): { "metodo": "WEIGHTED_AVG" | "SIMPLE_AVG" | "LAST" }
+ * Default: WEIGHTED_AVG (média ponderada por quantidade — CMPC)
  */
-export async function POST() {
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => ({}))
+  const metodo: MetodoCusto = METODOS_VALIDOS.includes(body.metodo) ? body.metodo : 'WEIGHTED_AVG'
+
   try {
-    // 1. Calcular custo médio ponderado por produto
-    const custos = await pgquery<{
-      product_id: string
-      custo_medio: string
-      total_quantidade: string
-      total_pedidos: string
-    }>(`
-      SELECT
-        poi.product_id,
-        SUM(poi.quantidade::numeric * poi.preco_unitario::numeric)
-          / SUM(poi.quantidade::numeric)                          AS custo_medio,
-        SUM(poi.quantidade::numeric)                             AS total_quantidade,
-        COUNT(DISTINCT poi.order_id)                             AS total_pedidos
-      FROM purchase_order_items poi
-      WHERE
-        poi.product_id IS NOT NULL
+    // Produtos ativos que têm ao menos 1 item de pedido com dados válidos
+    const candidatos = await pgquery<{ id: string; nome: string }>(`
+      SELECT DISTINCT p.id, p.nome
+      FROM products p
+      JOIN purchase_order_items poi ON poi.product_id = p.id
+      WHERE p.ativo = true
         AND poi.quantidade::numeric > 0
         AND poi.preco_unitario::numeric > 0
-      GROUP BY poi.product_id
+      ORDER BY p.nome
     `)
 
-    if (custos.length === 0) {
+    if (candidatos.length === 0) {
       return NextResponse.json({
-        message: 'Nenhum pedido de compra com itens associados a produtos encontrados.',
+        message: 'Nenhum produto com pedidos de compra encontrado.',
         atualizados: 0,
+        sem_dados: 0,
+        metodo,
       })
     }
 
-    // 2. Atualizar custo_vigente de cada produto
     let atualizados = 0
+    let semDados = 0
+    const erros: string[] = []
 
-    for (const row of custos) {
-      const custoMedio = Number(row.custo_medio)
-      if (isNaN(custoMedio) || custoMedio <= 0) continue
-
-      await pgquery(`
-        UPDATE products
-        SET
-          custo_vigente  = ${pgesc(custoMedio)},
-          updated_at     = now()
-        WHERE id = ${pgesc(row.product_id)}
-      `)
-
-      atualizados++
+    for (const p of candidatos) {
+      try {
+        const result = await calcularCustoProduto(p.id, metodo, 'manual')
+        if (result) {
+          atualizados++
+        } else {
+          semDados++
+        }
+      } catch (err) {
+        erros.push(`${p.nome}: ${err instanceof Error ? err.message : 'erro'}`)
+      }
     }
 
-    // 3. Retornar resumo
-    const semDados = await pgquery<{ total: string }>(`
-      SELECT COUNT(*) AS total
-      FROM products p
-      WHERE p.ativo = true
-        AND NOT EXISTS (
-          SELECT 1 FROM purchase_order_items poi
-          WHERE poi.product_id = p.id
-            AND poi.quantidade::numeric > 0
-            AND poi.preco_unitario::numeric > 0
-        )
-    `)
+    const metodoLabel = {
+      WEIGHTED_AVG: 'Média ponderada (CMPC)',
+      SIMPLE_AVG: 'Média simples',
+      LAST: 'Último preço pago',
+    }[metodo]
 
     return NextResponse.json({
-      message: `${atualizados} produto(s) com custo atualizado via média ponderada (CMPC).`,
+      message: `${atualizados} produto(s) atualizados via ${metodoLabel}.`,
       atualizados,
-      sem_pedidos: Number(semDados[0]?.total ?? 0),
+      sem_dados: semDados,
+      erros: erros.length > 0 ? erros : undefined,
+      metodo,
     })
   } catch (err) {
     console.error('[atualizar-custos]', err)

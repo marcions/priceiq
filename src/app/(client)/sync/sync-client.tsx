@@ -14,10 +14,19 @@ function BlingLogo() {
   )
 }
 
+type MetodoCusto = 'WEIGHTED_AVG' | 'SIMPLE_AVG' | 'LAST'
+
+const METODOS: { value: MetodoCusto; label: string; desc: string }[] = [
+  { value: 'WEIGHTED_AVG', label: 'Média ponderada (CMPC)', desc: 'Pondera cada preço pela quantidade comprada — mais preciso' },
+  { value: 'SIMPLE_AVG',   label: 'Média simples',          desc: 'Média aritmética de todos os preços unitários pagos' },
+  { value: 'LAST',         label: 'Último preço pago',      desc: 'Usa o preço do pedido mais recente' },
+]
+
 export function SyncClient({ connected }: { connected: boolean }) {
   const params = useSearchParams()
   // Estado separado por tipo para não bloquear um ao sincronizar o outro
   const [syncing, setSyncing] = useState<Record<string, boolean>>({})
+  const [metodoCusto, setMetodoCusto] = useState<MetodoCusto>('WEIGHTED_AVG')
 
   useEffect(() => {
     if (params.get('bling_connected') === 'true') {
@@ -48,12 +57,17 @@ export function SyncClient({ connected }: { connected: boolean }) {
   async function handleAtualizarCustos() {
     if (syncing['custos']) return
     setSyncing(prev => ({ ...prev, custos: true }))
-    const loadingId = toast.loading('Calculando custo médio ponderado (CMPC)...')
+    const metodoLabel = METODOS.find(m => m.value === metodoCusto)?.label ?? metodoCusto
+    const loadingId = toast.loading(`Calculando custos via ${metodoLabel}...`)
     try {
-      const res = await fetch('/api/produtos/atualizar-custos', { method: 'POST' })
+      const res = await fetch('/api/produtos/atualizar-custos', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ metodo: metodoCusto }),
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Erro desconhecido')
-      const semMsg = data.sem_pedidos > 0 ? ` (${data.sem_pedidos} sem dados de pedido)` : ''
+      const semMsg = data.sem_dados > 0 ? ` · ${data.sem_dados} sem pedidos` : ''
       toast.success(data.message + semMsg, { id: loadingId })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao atualizar custos', { id: loadingId })
@@ -170,26 +184,50 @@ export function SyncClient({ connected }: { connected: boolean }) {
 
       {/* Atualização de custos — disponível sempre, independente do Bling */}
       <div className="space-y-3">
-        <h3 className="font-semibold text-dark dark:text-white">Precificação</h3>
-        <div className="flex items-center justify-between rounded-xl border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
-          <div className="flex items-start gap-3">
-            <Calculator className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-            <div>
-              <p className="font-medium text-dark dark:text-white">Atualizar Custo de Produtos</p>
-              <p className="text-sm text-gray-6">
-                Recalcula <strong>custo_vigente</strong> de cada produto usando média ponderada (CMPC)
-                dos pedidos de compra importados.
-              </p>
-            </div>
+        <h3 className="font-semibold text-dark dark:text-white">Motor de Custo</h3>
+
+        {/* Seletor de método */}
+        <div className="rounded-xl border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark space-y-3">
+          <div className="flex items-center gap-2">
+            <Calculator className="h-4 w-4 text-green-500 shrink-0" />
+            <p className="font-medium text-dark dark:text-white text-sm">Método de cálculo</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            {METODOS.map(m => (
+              <label
+                key={m.value}
+                className={`flex items-start gap-3 cursor-pointer rounded-lg border p-3 transition-colors ${
+                  metodoCusto === m.value
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/10 dark:border-green-700'
+                    : 'border-stroke dark:border-dark-3 hover:bg-gray-1 dark:hover:bg-dark-2'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="metodo"
+                  value={m.value}
+                  checked={metodoCusto === m.value}
+                  onChange={() => setMetodoCusto(m.value)}
+                  className="mt-0.5 accent-green-600"
+                />
+                <div>
+                  <p className="text-sm font-medium text-dark dark:text-white">{m.label}</p>
+                  <p className="text-xs text-gray-6">{m.desc}</p>
+                </div>
+              </label>
+            ))}
           </div>
           <button
             onClick={handleAtualizarCustos}
             disabled={!!syncing['custos']}
-            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ml-4 shrink-0"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Calculator className={`h-4 w-4 ${syncing['custos'] ? 'animate-pulse' : ''}`} />
-            {syncing['custos'] ? 'Calculando...' : 'Atualizar Custos'}
+            {syncing['custos'] ? 'Calculando e salvando snapshots...' : 'Recalcular Custos de Todos os Produtos'}
           </button>
+          <p className="text-xs text-gray-6 text-center">
+            Gera um <strong>cost_snapshot</strong> imutável por produto com rastreabilidade dos pedidos usados.
+          </p>
         </div>
       </div>
     </div>
