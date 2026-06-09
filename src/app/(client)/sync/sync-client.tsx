@@ -16,7 +16,8 @@ function BlingLogo() {
 
 export function SyncClient({ connected }: { connected: boolean }) {
   const params = useSearchParams()
-  const [syncing, setSyncing] = useState(false)
+  // Estado separado por tipo para não bloquear um ao sincronizar o outro
+  const [syncing, setSyncing] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if (params.get('bling_connected') === 'true') {
@@ -29,16 +30,18 @@ export function SyncClient({ connected }: { connected: boolean }) {
   }, [params])
 
   async function handleSync(tipo: string) {
-    setSyncing(true)
+    if (syncing[tipo]) return // previne duplo clique
+    setSyncing(prev => ({ ...prev, [tipo]: true }))
+    const loadingId = toast.loading(`Sincronizando ${tipo === 'products' ? 'produtos' : 'pedidos'}...`)
     try {
       const res = await fetch(`/api/bling/sync/${tipo}`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Erro desconhecido')
-      toast.success(data.message ?? 'Sincronização concluída')
+      toast.success(data.message ?? 'Sincronização concluída', { id: loadingId })
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro na sincronização')
+      toast.error(err instanceof Error ? err.message : 'Erro na sincronização', { id: loadingId })
     } finally {
-      setSyncing(false)
+      setSyncing(prev => ({ ...prev, [tipo]: false }))
     }
   }
 
@@ -129,11 +132,11 @@ export function SyncClient({ connected }: { connected: boolean }) {
               </div>
               <button
                 onClick={() => handleSync(item.id)}
-                disabled={syncing}
+                disabled={!!syncing[item.id]}
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ml-4 shrink-0"
               >
-                <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                Sincronizar
+                <RefreshCw className={`h-4 w-4 ${syncing[item.id] ? 'animate-spin' : ''}`} />
+                {syncing[item.id] ? 'Sincronizando...' : 'Sincronizar'}
               </button>
             </div>
           ))}
