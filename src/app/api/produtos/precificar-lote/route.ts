@@ -1,20 +1,9 @@
 import { NextResponse } from 'next/server'
-import { precificarLote, MetodoPrecificacao } from '@/lib/precificacao/calcular'
+import { precificarLote } from '@/lib/precificacao/calcular'
 
-export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}))
-
-  const metodo: MetodoPrecificacao = body.metodo === 'MARGEM' ? 'MARGEM' : 'MARKUP'
-  const parametro = Number(body.parametro)
-
-  if (!parametro || parametro <= 0) {
-    return NextResponse.json({ error: 'parametro deve ser > 0' }, { status: 400 })
-  }
-
-  if (metodo === 'MARGEM' && parametro >= 100) {
-    return NextResponse.json({ error: 'margem deve ser < 100%' }, { status: 400 })
-  }
-
-  const result = await precificarLote(metodo, parametro)
+// Usa precificarPorFrente para cada produto — sem metodo/parametro manual.
+// Cada produto aplica a pricing_policy da sua frente automaticamente.
+export async function POST() {
+  const result = await precificarLote()
   return NextResponse.json(result)
 }

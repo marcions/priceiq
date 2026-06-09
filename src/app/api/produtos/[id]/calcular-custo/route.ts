@@ -30,13 +30,17 @@ export async function POST(
       })
     }
 
+    const nComp = result.componentes.filter(c => c.base === 'ON_COST').length
     return NextResponse.json({
-      message: `Custo atualizado: R$ ${result.custo_total.toFixed(4)} (${metodo}, ${result.pedidos_count} pedido(s))`,
+      message: `Custo atualizado: R$ ${result.custo_total.toFixed(4)} (${metodo}, ${result.pedidos_count} pedido(s), ${nComp} componentes aplicados)`,
       atualizado: true,
-      snapshot_id: result.snapshot_id,
-      custo_total: result.custo_total,
+      snapshot_id:   result.snapshot_id,
+      custo_base:    result.custo_base,
+      custo_total:   result.custo_total,
+      on_price_sum:  result.on_price_sum,
       metodo,
       pedidos_count: result.pedidos_count,
+      componentes:   result.componentes,
     })
   } catch (err) {
     console.error('[calcular-custo]', err)
