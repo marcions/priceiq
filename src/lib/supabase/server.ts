@@ -2,10 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from './types'
 
-// Server-side usa URL direta ao Kong (sem passar pelo proxy Next.js)
-// No Docker o container não consegue se chamar via URL pública
-const SUPABASE_SERVER_URL =
-  process.env.SUPABASE_DIRECT_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!
+// IMPORTANTE: usa NEXT_PUBLIC_SUPABASE_URL (não SUPABASE_DIRECT_URL)
+// O nome do cookie de sessão é derivado da URL base — deve ser a mesma
+// usada pelo client-side para que o servidor encontre o cookie correto.
+// Dados são buscados via pgquery/pg-meta, não pelo PostgREST.
+const SUPABASE_SERVER_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 
 export async function createClient() {
   const cookieStore = await cookies()

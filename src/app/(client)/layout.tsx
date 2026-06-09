@@ -1,7 +1,13 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/Layouts/sidebar'
 import { Header } from '@/components/Layouts/header'
 
-export default function ClientLayout({ children }: { children: React.ReactNode }) {
+export default async function ClientLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
   return (
     <div className="flex min-h-screen">
       <Sidebar />
