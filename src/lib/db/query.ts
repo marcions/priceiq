@@ -1,58 +1,40 @@
 /**
- * pgquery — raw SQL via pg-meta endpoint
- * Chama Kong diretamente via node:http (mesmo mecanismo do proxy /api/supabase).
- * Funciona dentro do Docker sem hairpin NAT — IP hardcoded, sem DNS externo.
+ * pgquery — raw SQL via pg-meta
+ * Chama o IP do Kong diretamente com Host header — sem DNS, sem hairpin NAT.
+ * Usa fetch() nativo do Node.js 18+ com timeout via AbortController.
  */
-import * as http from 'node:http'
 
-// Mesmo IP/host do proxy /api/supabase/[...path]/route.ts
 const SUPABASE_IP   = '20.51.158.208'
 const SUPABASE_HOST = 'supabasekong-m13buf3hxxtgq94jhatkirlk.20.51.158.208.sslip.io'
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const agent = new http.Agent({ keepAlive: true, keepAliveMsecs: 30000, maxSockets: 10 })
-
-function httpPost(path: string, body: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const bodyBuf = Buffer.from(body, 'utf8')
-    const req = http.request(
-      {
-        hostname: SUPABASE_IP,
-        port: 80,
-        path,
-        method: 'POST',
-        agent,
-        headers: {
-          host: SUPABASE_HOST,
-          'content-type': 'application/json',
-          'content-length': bodyBuf.length,
-          apikey: SERVICE_ROLE_KEY,
-          authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-        },
-      },
-      (res) => {
-        const chunks: Buffer[] = []
-        res.on('data', (c: Buffer) => chunks.push(c))
-        res.on('end', () => {
-          const text = Buffer.concat(chunks).toString('utf8')
-          if ((res.statusCode ?? 200) >= 400) {
-            reject(new Error(`pgquery failed (${res.statusCode}): ${text}`))
-          } else {
-            resolve(text)
-          }
-        })
-      }
-    )
-    req.on('error', reject)
-    req.setTimeout(30000, () => req.destroy(new Error('pgquery timeout')))
-    req.write(bodyBuf)
-    req.end()
-  })
-}
+const SERVICE_ROLE_KEY = () => process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 export async function pgquery<T = Record<string, unknown>>(sql: string): Promise<T[]> {
-  const text = await httpPost('/pg/query', JSON.stringify({ query: sql }))
-  return JSON.parse(text) as T[]
+  const key = SERVICE_ROLE_KEY()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 30_000)
+
+  try {
+    const res = await fetch(`http://${SUPABASE_IP}/pg/query`, {
+      method: 'POST',
+      headers: {
+        host: SUPABASE_HOST,
+        'content-type': 'application/json',
+        apikey: key,
+        authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({ query: sql }),
+      signal: controller.signal,
+      cache: 'no-store',
+    } as RequestInit)
+
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`pgquery failed (${res.status}): ${text}`)
+    }
+    return res.json() as Promise<T[]>
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 /** Convenience: return first row or null */
