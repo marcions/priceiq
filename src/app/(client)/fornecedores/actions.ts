@@ -1,6 +1,6 @@
 'use server'
 
-import { createServiceClient } from '@/lib/supabase/server'
+import { pgquery, pgesc } from '@/lib/db/query'
 import { revalidatePath } from 'next/cache'
 
 interface FornecedorData {
@@ -11,47 +11,39 @@ interface FornecedorData {
 
 export async function createFornecedor(data: FornecedorData) {
   try {
-    const supabase = await createServiceClient()
-    const { error } = await supabase.from('suppliers').insert({
-      nome: data.nome,
-      cnpj: data.cnpj || null,
-      ativo: data.ativo ?? true,
-    })
-    if (error) throw error
+    await pgquery(`
+      INSERT INTO suppliers (nome, cnpj, ativo)
+      VALUES (${pgesc(data.nome)}, ${pgesc(data.cnpj ?? null)}, ${data.ativo !== false ? 'TRUE' : 'FALSE'})
+    `)
     revalidatePath('/fornecedores')
     return { success: true }
-  } catch (err: unknown) {
+  } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao criar fornecedor' }
   }
 }
 
 export async function updateFornecedor(id: string, data: FornecedorData) {
   try {
-    const supabase = await createServiceClient()
-    const { error } = await supabase
-      .from('suppliers')
-      .update({
-        nome: data.nome,
-        cnpj: data.cnpj || null,
-        ativo: data.ativo ?? true,
-      })
-      .eq('id', id)
-    if (error) throw error
+    await pgquery(`
+      UPDATE suppliers
+      SET nome = ${pgesc(data.nome)},
+          cnpj = ${pgesc(data.cnpj ?? null)},
+          ativo = ${data.ativo !== false ? 'TRUE' : 'FALSE'}
+      WHERE id = ${pgesc(id)}
+    `)
     revalidatePath('/fornecedores')
     return { success: true }
-  } catch (err: unknown) {
+  } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao atualizar fornecedor' }
   }
 }
 
 export async function deleteFornecedor(id: string) {
   try {
-    const supabase = await createServiceClient()
-    const { error } = await supabase.from('suppliers').delete().eq('id', id)
-    if (error) throw error
+    await pgquery(`DELETE FROM suppliers WHERE id = ${pgesc(id)}`)
     revalidatePath('/fornecedores')
     return { success: true }
-  } catch (err: unknown) {
+  } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao excluir fornecedor' }
   }
 }

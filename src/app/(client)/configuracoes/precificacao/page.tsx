@@ -1,17 +1,19 @@
 export const dynamic = 'force-dynamic'
 
-import { createServiceClient } from '@/lib/supabase/server'
+import { pgquery } from '@/lib/db/query'
 import { PrecificacaoClient } from './precificacao-client'
+import type { Database } from '@/lib/supabase/types'
+
+type PricingPolicyRow = Database['public']['Tables']['pricing_policies']['Row']
 
 export default async function PrecificacaoPoliciesPage() {
-  const supabase = await createServiceClient()
-  const { data: policies, error } = await supabase
-    .from('pricing_policies')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('Erro ao carregar políticas de precificação:', error)
+  let policies: PricingPolicyRow[] = []
+  try {
+    policies = await pgquery<PricingPolicyRow>(
+      'SELECT * FROM pricing_policies ORDER BY created_at DESC'
+    )
+  } catch (err) {
+    console.error('Erro ao carregar políticas de precificação:', err)
   }
 
   return (
@@ -22,7 +24,7 @@ export default async function PrecificacaoPoliciesPage() {
           Configure as regras de markup e margem para calcular os preços de venda.
         </p>
       </div>
-      <PrecificacaoClient policies={policies ?? []} />
+      <PrecificacaoClient policies={policies} />
     </div>
   )
 }

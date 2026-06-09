@@ -1,19 +1,30 @@
 export const dynamic = 'force-dynamic'
 
-import { createServiceClient } from '@/lib/supabase/server'
+import { pgquery } from '@/lib/db/query'
 import { FornecedoresClient } from './fornecedores-client'
 
-export default async function FornecedoresPage() {
-  const supabase = await createServiceClient()
+interface FornecedorRow {
+  id: string
+  nome: string
+  cnpj: string | null
+  bling_id: string | null
+  ativo: boolean
+  created_at: string
+}
 
-  const { data: fornecedores } = await supabase
-    .from('suppliers')
-    .select('id, nome, cnpj, bling_id, ativo, created_at')
-    .order('nome', { ascending: true })
+export default async function FornecedoresPage() {
+  let fornecedores: FornecedorRow[] = []
+  try {
+    fornecedores = await pgquery<FornecedorRow>(
+      'SELECT id, nome, cnpj, bling_id, ativo, created_at FROM suppliers ORDER BY nome ASC'
+    )
+  } catch (err) {
+    console.error('Erro ao carregar fornecedores:', err)
+  }
 
   return (
     <div className="container py-8">
-      <FornecedoresClient fornecedores={fornecedores ?? []} />
+      <FornecedoresClient fornecedores={fornecedores} />
     </div>
   )
 }

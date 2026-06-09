@@ -1,6 +1,6 @@
 'use server'
 
-import { createServiceClient } from '@/lib/supabase/server'
+import { pgquery, pgesc } from '@/lib/db/query'
 import { revalidatePath } from 'next/cache'
 
 interface CategoriaData {
@@ -11,47 +11,39 @@ interface CategoriaData {
 
 export async function createCategoria(data: CategoriaData) {
   try {
-    const supabase = await createServiceClient()
-    const { error } = await supabase.from('categories').insert({
-      nome: data.nome,
-      parent_id: data.parent_id || null,
-      ordem: data.ordem ?? 0,
-    })
-    if (error) throw error
+    await pgquery(`
+      INSERT INTO categories (nome, parent_id, ordem)
+      VALUES (${pgesc(data.nome)}, ${pgesc(data.parent_id ?? null)}, ${pgesc(data.ordem ?? 0)})
+    `)
     revalidatePath('/categorias')
     return { success: true }
-  } catch (err: unknown) {
+  } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao criar categoria' }
   }
 }
 
 export async function updateCategoria(id: string, data: CategoriaData) {
   try {
-    const supabase = await createServiceClient()
-    const { error } = await supabase
-      .from('categories')
-      .update({
-        nome: data.nome,
-        parent_id: data.parent_id || null,
-        ordem: data.ordem ?? 0,
-      })
-      .eq('id', id)
-    if (error) throw error
+    await pgquery(`
+      UPDATE categories
+      SET nome = ${pgesc(data.nome)},
+          parent_id = ${pgesc(data.parent_id ?? null)},
+          ordem = ${pgesc(data.ordem ?? 0)}
+      WHERE id = ${pgesc(id)}
+    `)
     revalidatePath('/categorias')
     return { success: true }
-  } catch (err: unknown) {
+  } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao atualizar categoria' }
   }
 }
 
 export async function deleteCategoria(id: string) {
   try {
-    const supabase = await createServiceClient()
-    const { error } = await supabase.from('categories').delete().eq('id', id)
-    if (error) throw error
+    await pgquery(`DELETE FROM categories WHERE id = ${pgesc(id)}`)
     revalidatePath('/categorias')
     return { success: true }
-  } catch (err: unknown) {
+  } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao excluir categoria' }
   }
 }

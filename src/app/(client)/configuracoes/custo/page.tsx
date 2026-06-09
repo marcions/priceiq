@@ -1,17 +1,19 @@
 export const dynamic = 'force-dynamic'
 
-import { createServiceClient } from '@/lib/supabase/server'
+import { pgquery } from '@/lib/db/query'
 import { CustoClient } from './custo-client'
+import type { Database } from '@/lib/supabase/types'
+
+type CostPolicyRow = Database['public']['Tables']['cost_policies']['Row']
 
 export default async function CustoPoliciesPage() {
-  const supabase = await createServiceClient()
-  const { data: policies, error } = await supabase
-    .from('cost_policies')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('Erro ao carregar políticas de custo:', error)
+  let policies: CostPolicyRow[] = []
+  try {
+    policies = await pgquery<CostPolicyRow>(
+      'SELECT * FROM cost_policies ORDER BY created_at DESC'
+    )
+  } catch (err) {
+    console.error('Erro ao carregar políticas de custo:', err)
   }
 
   return (
@@ -22,7 +24,7 @@ export default async function CustoPoliciesPage() {
           Configure como o custo dos produtos é calculado para precificação.
         </p>
       </div>
-      <CustoClient policies={policies ?? []} />
+      <CustoClient policies={policies} />
     </div>
   )
 }
