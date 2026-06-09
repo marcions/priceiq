@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { Database } from '@/lib/supabase/types'
 
@@ -9,7 +9,7 @@ type PricingPolicyUpdate = Database['public']['Tables']['pricing_policies']['Upd
 
 export async function createPricingPolicy(data: PricingPolicyInsert) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServiceClient()
     const { error } = await supabase.from('pricing_policies').insert(data)
     if (error) return { error: error.message }
     revalidatePath('/configuracoes/precificacao')
@@ -21,7 +21,7 @@ export async function createPricingPolicy(data: PricingPolicyInsert) {
 
 export async function updatePricingPolicy(id: string, data: PricingPolicyUpdate) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServiceClient()
     const { error } = await supabase.from('pricing_policies').update(data).eq('id', id)
     if (error) return { error: error.message }
     revalidatePath('/configuracoes/precificacao')
@@ -33,7 +33,7 @@ export async function updatePricingPolicy(id: string, data: PricingPolicyUpdate)
 
 export async function deletePricingPolicy(id: string) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServiceClient()
     const { error } = await supabase.from('pricing_policies').delete().eq('id', id)
     if (error) return { error: error.message }
     revalidatePath('/configuracoes/precificacao')

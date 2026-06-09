@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 interface FornecedorData {
@@ -11,7 +11,7 @@ interface FornecedorData {
 
 export async function createFornecedor(data: FornecedorData) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServiceClient()
     const { error } = await supabase.from('suppliers').insert({
       nome: data.nome,
       cnpj: data.cnpj || null,
@@ -27,7 +27,7 @@ export async function createFornecedor(data: FornecedorData) {
 
 export async function updateFornecedor(id: string, data: FornecedorData) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServiceClient()
     const { error } = await supabase
       .from('suppliers')
       .update({
@@ -46,7 +46,7 @@ export async function updateFornecedor(id: string, data: FornecedorData) {
 
 export async function deleteFornecedor(id: string) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServiceClient()
     const { error } = await supabase.from('suppliers').delete().eq('id', id)
     if (error) throw error
     revalidatePath('/fornecedores')

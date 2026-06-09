@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 interface CategoriaData {
@@ -11,7 +11,7 @@ interface CategoriaData {
 
 export async function createCategoria(data: CategoriaData) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServiceClient()
     const { error } = await supabase.from('categories').insert({
       nome: data.nome,
       parent_id: data.parent_id || null,
@@ -27,7 +27,7 @@ export async function createCategoria(data: CategoriaData) {
 
 export async function updateCategoria(id: string, data: CategoriaData) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServiceClient()
     const { error } = await supabase
       .from('categories')
       .update({
@@ -46,7 +46,7 @@ export async function updateCategoria(id: string, data: CategoriaData) {
 
 export async function deleteCategoria(id: string) {
   try {
-    const supabase = await createClient()
+    const supabase = await createServiceClient()
     const { error } = await supabase.from('categories').delete().eq('id', id)
     if (error) throw error
     revalidatePath('/categorias')

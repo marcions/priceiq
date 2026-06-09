@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { PrecificacaoClient } from './precificacao-client'
 
 export default async function PrecificacaoPoliciesPage() {
-  const supabase = await createClient()
+  const supabase = await createServiceClient()
   const { data: policies, error } = await supabase
     .from('pricing_policies')
     .select('*')

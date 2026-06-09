@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { CategoriasClient } from './categorias-client'
 
 export default async function CategoriasPage() {
-  const supabase = await createClient()
+  const supabase = await createServiceClient()
 
   const { data: categorias } = await supabase
     .from('categories')

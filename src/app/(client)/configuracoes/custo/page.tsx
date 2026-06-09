@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { CustoClient } from './custo-client'
 
 export default async function CustoPoliciesPage() {
-  const supabase = await createClient()
+  const supabase = await createServiceClient()
   const { data: policies, error } = await supabase
     .from('cost_policies')
     .select('*')
