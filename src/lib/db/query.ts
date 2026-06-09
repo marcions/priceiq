@@ -31,7 +31,15 @@ export async function pgquery<T = Record<string, unknown>>(sql: string): Promise
       const text = await res.text()
       throw new Error(`pgquery failed (${res.status}): ${text}`)
     }
-    return res.json() as Promise<T[]>
+
+    const data = await res.json()
+
+    // pg-meta retorna HTTP 200 com { message, error, hint } em caso de erro SQL
+    if (data && typeof data === 'object' && !Array.isArray(data) && data.message) {
+      throw new Error(`pgquery SQL error: ${data.message}${data.hint ? ` (hint: ${data.hint})` : ''}`)
+    }
+
+    return (Array.isArray(data) ? data : []) as T[]
   } finally {
     clearTimeout(timer)
   }

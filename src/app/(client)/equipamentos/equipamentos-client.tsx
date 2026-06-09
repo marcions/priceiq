@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useOptimistic, useTransition } from 'react'
+import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Search, Printer, CheckCircle2, Package } from 'lucide-react'
 import { fmtNum, fmtMoeda } from '@/lib/format'
