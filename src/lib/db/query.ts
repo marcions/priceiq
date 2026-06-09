@@ -1,11 +1,12 @@
 /**
- * pgquery — raw SQL via pg-meta
- * Chama o IP do Kong diretamente com Host header — sem DNS, sem hairpin NAT.
- * Usa fetch() nativo do Node.js 18+ com timeout via AbortController.
+ * pgquery — raw SQL via pg-meta (Kong)
+ * Usa a URL completa com hostname DNS para que o Kong roteie corretamente.
+ * fetch() do Node.js (undici) ignora override de 'host' header — por isso
+ * usamos o hostname completo na URL em vez de IP + Host header.
+ * O hostname sslip.io resolve via DNS para 20.51.158.208 (sem hairpin NAT).
  */
 
-const SUPABASE_IP   = '20.51.158.208'
-const SUPABASE_HOST = 'supabasekong-m13buf3hxxtgq94jhatkirlk.20.51.158.208.sslip.io'
+const KONG_BASE = 'http://supabasekong-m13buf3hxxtgq94jhatkirlk.20.51.158.208.sslip.io'
 const SERVICE_ROLE_KEY = () => process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 export async function pgquery<T = Record<string, unknown>>(sql: string): Promise<T[]> {
@@ -14,10 +15,9 @@ export async function pgquery<T = Record<string, unknown>>(sql: string): Promise
   const timer = setTimeout(() => controller.abort(), 30_000)
 
   try {
-    const res = await fetch(`http://${SUPABASE_IP}/pg/query`, {
+    const res = await fetch(`${KONG_BASE}/pg/query`, {
       method: 'POST',
       headers: {
-        host: SUPABASE_HOST,
         'content-type': 'application/json',
         apikey: key,
         authorization: `Bearer ${key}`,
