@@ -1,39 +1,58 @@
 /**
  * pgquery — raw SQL via pg-meta endpoint
- * Bypasses PostgREST entirely; uses service_role (RLS bypassed).
- * Server-side only.
- *
- * Usa NEXT_PUBLIC_SUPABASE_URL (proxy Next.js) — a mesma rota que auth usa.
- * O proxy já chama o Supabase diretamente via node:http com IP hardcoded,
- * então funciona dentro do Docker sem depender de hairpin NAT ou rede externa.
+ * Chama Kong diretamente via node:http (mesmo mecanismo do proxy /api/supabase).
+ * Funciona dentro do Docker sem hairpin NAT — IP hardcoded, sem DNS externo.
  */
-const BASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!.replace(/\/$/, '')
+import * as http from 'node:http'
 
+// Mesmo IP/host do proxy /api/supabase/[...path]/route.ts
+const SUPABASE_IP   = '20.51.158.208'
+const SUPABASE_HOST = 'supabasekong-m13buf3hxxtgq94jhatkirlk.20.51.158.208.sslip.io'
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-export async function pgquery<T = Record<string, unknown>>(
-  sql: string,
-  params?: Record<string, unknown>
-): Promise<T[]> {
-  // pg-meta doesn't support parameterized queries — caller must sanitize inputs
-  const res = await fetch(`${BASE_URL}/pg/query`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-    },
-    body: JSON.stringify({ query: sql }),
-    // No cache — always fresh data
-    cache: 'no-store',
+const agent = new http.Agent({ keepAlive: true, keepAliveMsecs: 30000, maxSockets: 10 })
+
+function httpPost(path: string, body: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const bodyBuf = Buffer.from(body, 'utf8')
+    const req = http.request(
+      {
+        hostname: SUPABASE_IP,
+        port: 80,
+        path,
+        method: 'POST',
+        agent,
+        headers: {
+          host: SUPABASE_HOST,
+          'content-type': 'application/json',
+          'content-length': bodyBuf.length,
+          apikey: SERVICE_ROLE_KEY,
+          authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        },
+      },
+      (res) => {
+        const chunks: Buffer[] = []
+        res.on('data', (c: Buffer) => chunks.push(c))
+        res.on('end', () => {
+          const text = Buffer.concat(chunks).toString('utf8')
+          if ((res.statusCode ?? 200) >= 400) {
+            reject(new Error(`pgquery failed (${res.statusCode}): ${text}`))
+          } else {
+            resolve(text)
+          }
+        })
+      }
+    )
+    req.on('error', reject)
+    req.setTimeout(30000, () => req.destroy(new Error('pgquery timeout')))
+    req.write(bodyBuf)
+    req.end()
   })
+}
 
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`pgquery failed (${res.status}): ${text}`)
-  }
-
-  return res.json() as Promise<T[]>
+export async function pgquery<T = Record<string, unknown>>(sql: string): Promise<T[]> {
+  const text = await httpPost('/pg/query', JSON.stringify({ query: sql }))
+  return JSON.parse(text) as T[]
 }
 
 /** Convenience: return first row or null */
