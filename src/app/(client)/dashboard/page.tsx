@@ -20,9 +20,10 @@ const getCachedKpis = unstable_cache(
   { revalidate: 30 }
 )
 
-function fmt(v: number | null, frações = 2) {
-  if (v == null) return '—'
-  return v.toLocaleString('pt-BR', { minimumFractionDigits: frações, maximumFractionDigits: frações })
+function fmt(v: number | string | null | undefined, frações = 2) {
+  const n = Number(v)
+  if (v == null || isNaN(n)) return '—'
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: frações, maximumFractionDigits: frações })
 }
 
 function calcMargem(custo: number | null, preco: number | null) {
