@@ -2,11 +2,12 @@
  * pgquery — raw SQL via pg-meta endpoint
  * Bypasses PostgREST entirely; uses service_role (RLS bypassed).
  * Server-side only.
+ *
+ * Usa NEXT_PUBLIC_SUPABASE_URL (proxy Next.js) — a mesma rota que auth usa.
+ * O proxy já chama o Supabase diretamente via node:http com IP hardcoded,
+ * então funciona dentro do Docker sem depender de hairpin NAT ou rede externa.
  */
-
-const BASE_URL = (
-  process.env.SUPABASE_DIRECT_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!
-).replace(/\/$/, '')
+const BASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!.replace(/\/$/, '')
 
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
