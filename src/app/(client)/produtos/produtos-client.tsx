@@ -26,6 +26,7 @@ import { ProdutoForm } from '@/components/produtos/produto-form'
 import { deleteProduto } from './actions'
 import type { Database } from '@/lib/supabase/types'
 import { Plus, Pencil, Trash2, Package } from 'lucide-react'
+import { fmtMoeda, fmtMargem } from '@/lib/format'
 
 type ProductRow = Database['public']['Tables']['products']['Row']
 type CategoryRow = Pick<Database['public']['Tables']['categories']['Row'], 'id' | 'nome'>
@@ -49,17 +50,8 @@ const BLING_STATUS_CONFIG = {
   not_connected: { label: 'Não conectado', className: 'bg-gray-100 text-gray-600' },
 } as const
 
-function formatCurrency(value: number | string | null | undefined) {
-  const n = Number(value)
-  if (value == null || isNaN(n)) return '—'
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function calcMargem(custo: number | string | null | undefined, preco: number | string | null | undefined): string {
-  const c = Number(custo), p = Number(preco)
-  if (!custo || !preco || isNaN(c) || isNaN(p) || p === 0) return '—'
-  return `${(((p - c) / p) * 100).toFixed(1)}%`
-}
+const formatCurrency = fmtMoeda
+const calcMargem = fmtMargem
 
 interface ProdutosClientProps {
   produtos: ProductWithRelations[]

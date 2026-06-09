@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Search, Layers } from 'lucide-react'
+import { fmtNum, fmtMoeda } from '@/lib/format'
 
 type Insumo = {
   id: string
@@ -26,11 +27,7 @@ const TIPO_COLORS: Record<string, string> = {
   TPU: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
 }
 
-function fmt(v: number | string | null | undefined, frações = 2) {
-  const n = Number(v)
-  if (v == null || isNaN(n)) return '—'
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: frações, maximumFractionDigits: frações })
-}
+const fmt = fmtNum
 
 export function InsumosClient({ insumos }: { insumos: Insumo[] }) {
   const [busca, setBusca] = useState('')
@@ -136,7 +133,7 @@ export function InsumosClient({ insumos }: { insumos: Insumo[] }) {
                     R$ {fmt(f.custo_por_grama, 3)}
                   </td>
                   <td className="px-4 py-3 text-right text-gray-6">
-                    {(f.taxa_falha * 100).toFixed(0)}%
+                    {(Number(f.taxa_falha) * 100).toFixed(0)}%
                   </td>
                 </tr>
               ))}

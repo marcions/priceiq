@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Search, Printer } from 'lucide-react'
+import { fmtNum, fmtMoeda } from '@/lib/format'
 
 type Equipamento = {
   id: string
@@ -32,11 +33,7 @@ const NIVEL_COLORS: Record<string, string> = {
   'Hobby / Entrada': 'bg-gray-100 text-gray-700 dark:bg-dark-3 dark:text-dark-6',
 }
 
-function fmt(v: number | string | null | undefined, frações = 2) {
-  const n = Number(v)
-  if (v == null || isNaN(n)) return '—'
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: frações, maximumFractionDigits: frações })
-}
+const fmt = fmtNum
 
 export function EquipamentosClient({ equipamentos }: { equipamentos: Equipamento[] }) {
   const [busca, setBusca] = useState('')
@@ -162,7 +159,7 @@ export function EquipamentosClient({ equipamentos }: { equipamentos: Equipamento
             {/* Footer */}
             <div className="mt-3 pt-3 border-t border-stroke dark:border-dark-3 flex justify-between text-xs text-gray-6">
               <span>{eq.horas_dia}h/dia · {eq.dias_mes} dias/mês</span>
-              <span>Erros: {((eq.taxa_erros ?? 0) * 100).toFixed(0)}%</span>
+              <span>Erros: {(Number(eq.taxa_erros ?? 0) * 100).toFixed(0)}%</span>
             </div>
           </div>
         ))}

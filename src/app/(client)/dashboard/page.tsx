@@ -4,6 +4,7 @@ import { pgquery, pgqueryone } from '@/lib/db/query'
 import { unstable_cache } from 'next/cache'
 import { Package, Layers, Printer, Tag, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
+import { fmtNum, fmtMargem } from '@/lib/format'
 
 // KPIs semi-estáticos — revalidam a cada 30s
 const getCachedKpis = unstable_cache(
@@ -20,16 +21,7 @@ const getCachedKpis = unstable_cache(
   { revalidate: 30 }
 )
 
-function fmt(v: number | string | null | undefined, frações = 2) {
-  const n = Number(v)
-  if (v == null || isNaN(n)) return '—'
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: frações, maximumFractionDigits: frações })
-}
-
-function calcMargem(custo: number | null, preco: number | null) {
-  if (!custo || !preco || preco === 0) return null
-  return ((preco - custo) / preco) * 100
-}
+const fmt = fmtNum
 
 export default async function DashboardPage() {
   // KPIs cacheados (30s) + top produtos dinâmicos — em paralelo
@@ -53,10 +45,16 @@ export default async function DashboardPage() {
   const totalCategorias = parseInt(totalCategoriasRow?.total ?? '0')
   const valorParque = impressoras.reduce((a, b) => a + (Number(b.valor_equipamento) || 0), 0)
 
+  function margem(custo: unknown, preco: unknown): number | null {
+    const c = Number(custo), p = Number(preco)
+    if (!c || !p || p === 0) return null
+    return ((p - c) / p) * 100
+  }
+
   const produtosComPreco = produtos.filter((p) => p.custo_vigente && p.preco_venda_vigente)
   const margemMedia =
     produtosComPreco.length > 0
-      ? produtosComPreco.reduce((a, p) => a + (calcMargem(p.custo_vigente, p.preco_venda_vigente) ?? 0), 0) /
+      ? produtosComPreco.reduce((a, p) => a + (margem(p.custo_vigente, p.preco_venda_vigente) ?? 0), 0) /
         produtosComPreco.length
       : null
 
@@ -135,7 +133,7 @@ export default async function DashboardPage() {
             </thead>
             <tbody>
               {produtos.map((p) => {
-                const margem = calcMargem(p.custo_vigente, p.preco_venda_vigente)
+                const m = margem(p.custo_vigente, p.preco_venda_vigente)
                 return (
                   <tr
                     key={p.sku}
@@ -147,13 +145,13 @@ export default async function DashboardPage() {
                     <td className="px-4 py-3 text-right text-gray-7 dark:text-dark-6">R$ {fmt(p.custo_vigente)}</td>
                     <td className="px-4 py-3 text-right font-semibold text-dark dark:text-white">R$ {fmt(p.preco_venda_vigente)}</td>
                     <td className="px-4 py-3 text-right">
-                      {margem !== null ? (
+                      {m !== null ? (
                         <span
                           className={`font-semibold ${
-                            margem >= 60 ? 'text-green-500' : margem >= 40 ? 'text-yellow-500' : 'text-red-500'
+                            m >= 60 ? 'text-green-500' : m >= 40 ? 'text-yellow-500' : 'text-red-500'
                           }`}
                         >
-                          {fmt(margem, 1)}%
+                          {fmt(m, 1)}%
                         </span>
                       ) : (
                         '—'

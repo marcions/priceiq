@@ -44,10 +44,8 @@ const ARREDONDAMENTO_LABELS: Record<PricingPolicyRow['arredondamento'], string> 
   integer: 'Inteiro',
 }
 
-function formatPct(value: number | null) {
-  if (value === null) return '—'
-  return `${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%`
-}
+import { fmtPct } from '@/lib/format'
+const formatPct = fmtPct
 
 interface PrecificacaoClientProps {
   policies: PricingPolicyRow[]
