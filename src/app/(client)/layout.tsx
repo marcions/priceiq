@@ -4,15 +4,9 @@ import { Sidebar } from '@/components/Layouts/sidebar'
 import { Header } from '@/components/Layouts/header'
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
-  let session = null
-  try {
-    const supabase = await createClient()
-    const { data } = await supabase.auth.getSession()
-    session = data.session
-  } catch (e) {
-    return <pre style={{color:'red',padding:'2rem',whiteSpace:'pre-wrap'}}>{`layout error: ${e instanceof Error ? e.message+'\n'+e.stack : String(e)}`}</pre>
-  }
-  if (!session) redirect('/login')
+  const supabase = await createClient()
+  const { data } = await supabase.auth.getSession()
+  if (!data.session) redirect('/login')
 
   return (
     <div className="flex min-h-screen">

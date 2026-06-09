@@ -15,18 +15,7 @@ function calcMargem(custo: number | null, preco: number | null) {
 }
 
 export default async function DashboardPage() {
-  // DEBUG: captura erro real para diagnóstico
-  try { await pgqueryone('SELECT 1') } catch(e) {
-    return <pre style={{color:'red',padding:'2rem',whiteSpace:'pre-wrap'}}>{`pgquery error: ${e instanceof Error ? e.message : String(e)}`}</pre>
-  }
-
-  let totalProdutosRow: { total: string } | null = null
-  let produtos: { sku: string; nome: string; custo_vigente: number | null; preco_venda_vigente: number | null; category_nome: string | null }[] = []
-  let filamentos: { id: string }[] = []
-  let impressoras: { id: string; valor_equipamento: number | null }[] = []
-  let totalCategoriasRow: { total: string } | null = null
-  try {
-  ;[
+  const [
     totalProdutosRow,
     produtos,
     filamentos,
@@ -46,9 +35,6 @@ export default async function DashboardPage() {
     pgquery<{ id: string; valor_equipamento: number | null }>(`SELECT id, valor_equipamento FROM impressoras`),
     pgqueryone<{ total: string }>(`SELECT COUNT(*) AS total FROM categories`),
   ])
-  } catch(e) {
-    return <pre style={{color:'red',padding:'2rem',whiteSpace:'pre-wrap'}}>{`dashboard query error: ${e instanceof Error ? e.message+'\n'+e.stack : String(e)}`}</pre>
-  }
 
   const totalProdutos = parseInt(totalProdutosRow?.total ?? '0')
   const totalFilamentos = filamentos.length
