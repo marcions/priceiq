@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { pgquery, pgesc } from '@/lib/db/query'
 import { revalidatePath } from 'next/cache'
 import type { Database } from '@/lib/supabase/types'
 
@@ -9,9 +9,9 @@ type ProductUpdate = Database['public']['Tables']['products']['Update']
 
 export async function createProduto(data: ProductInsert) {
   try {
-    const supabase = await createClient()
-    const { error } = await supabase.from('products').insert(data)
-    if (error) throw error
+    const cols = Object.keys(data).join(', ')
+    const vals = Object.values(data).map(pgesc).join(', ')
+    await pgquery(`INSERT INTO products (${cols}) VALUES (${vals})`)
     revalidatePath('/produtos')
     return { success: true as const }
   } catch (err: unknown) {
@@ -21,9 +21,10 @@ export async function createProduto(data: ProductInsert) {
 
 export async function updateProduto(id: string, data: ProductUpdate) {
   try {
-    const supabase = await createClient()
-    const { error } = await supabase.from('products').update(data).eq('id', id)
-    if (error) throw error
+    const set = Object.entries(data)
+      .map(([k, v]) => `${k} = ${pgesc(v)}`)
+      .join(', ')
+    await pgquery(`UPDATE products SET ${set}, updated_at = now() WHERE id = ${pgesc(id)}`)
     revalidatePath('/produtos')
     return { success: true as const }
   } catch (err: unknown) {
@@ -33,9 +34,7 @@ export async function updateProduto(id: string, data: ProductUpdate) {
 
 export async function deleteProduto(id: string) {
   try {
-    const supabase = await createClient()
-    const { error } = await supabase.from('products').delete().eq('id', id)
-    if (error) throw error
+    await pgquery(`DELETE FROM products WHERE id = ${pgesc(id)}`)
     revalidatePath('/produtos')
     return { success: true as const }
   } catch (err: unknown) {
@@ -45,9 +44,7 @@ export async function deleteProduto(id: string) {
 
 export async function toggleProduto(id: string, ativo: boolean) {
   try {
-    const supabase = await createClient()
-    const { error } = await supabase.from('products').update({ ativo }).eq('id', id)
-    if (error) throw error
+    await pgquery(`UPDATE products SET ativo = ${pgesc(ativo)}, updated_at = now() WHERE id = ${pgesc(id)}`)
     revalidatePath('/produtos')
     return { success: true as const }
   } catch (err: unknown) {

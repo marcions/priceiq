@@ -1,17 +1,23 @@
-// Gerenciamento de tokens Bling no Supabase
+// Gerenciamento de tokens Bling via pg-meta (bypassa PostgREST)
 
-import { createServiceClient } from '@/lib/supabase/server'
+import { pgquery, pgqueryone, pgesc } from '@/lib/db/query'
 import { refreshAccessToken } from './client'
 
-export async function getValidToken(): Promise<string | null> {
-  const supabase = await createServiceClient()
+interface BlingTokenRow {
+  id: string
+  access_token: string
+  refresh_token: string
+  expires_at: string
+  scope: string | null
+  token_type: string | null
+  created_at: string
+  updated_at: string
+}
 
-  const { data: token } = await (supabase as any)
-    .from('bling_tokens')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
+export async function getValidToken(): Promise<string | null> {
+  const token = await pgqueryone<BlingTokenRow>(`
+    SELECT * FROM bling_tokens ORDER BY created_at DESC LIMIT 1
+  `)
 
   if (!token) return null
 
@@ -26,15 +32,14 @@ export async function getValidToken(): Promise<string | null> {
     const refreshed = await refreshAccessToken(token.refresh_token)
     const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000)
 
-    await (supabase as any)
-      .from('bling_tokens')
-      .update({
-        access_token: refreshed.access_token,
-        refresh_token: refreshed.refresh_token,
-        expires_at: newExpiresAt.toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', token.id)
+    await pgquery(`
+      UPDATE bling_tokens SET
+        access_token  = ${pgesc(refreshed.access_token)},
+        refresh_token = ${pgesc(refreshed.refresh_token)},
+        expires_at    = ${pgesc(newExpiresAt.toISOString())},
+        updated_at    = now()
+      WHERE id = ${pgesc(token.id)}
+    `)
 
     return refreshed.access_token
   } catch (err) {
@@ -50,36 +55,34 @@ export async function saveToken(tokenData: {
   scope?: string
   token_type?: string
 }) {
-  const supabase = await createServiceClient()
   const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000)
 
-  // Upsert: sempre mantém apenas 1 token (última conexão)
-  const { data: existing } = await (supabase as any)
-    .from('bling_tokens')
-    .select('id')
-    .limit(1)
-    .single()
+  const existing = await pgqueryone<{ id: string }>(`
+    SELECT id FROM bling_tokens LIMIT 1
+  `)
 
   if (existing) {
-    await (supabase as any)
-      .from('bling_tokens')
-      .update({
-        access_token: tokenData.access_token,
-        refresh_token: tokenData.refresh_token,
-        expires_at: expiresAt.toISOString(),
-        scope: tokenData.scope,
-        token_type: tokenData.token_type ?? 'Bearer',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id)
+    await pgquery(`
+      UPDATE bling_tokens SET
+        access_token  = ${pgesc(tokenData.access_token)},
+        refresh_token = ${pgesc(tokenData.refresh_token)},
+        expires_at    = ${pgesc(expiresAt.toISOString())},
+        scope         = ${pgesc(tokenData.scope ?? null)},
+        token_type    = ${pgesc(tokenData.token_type ?? 'Bearer')},
+        updated_at    = now()
+      WHERE id = ${pgesc(existing.id)}
+    `)
   } else {
-    await (supabase as any).from('bling_tokens').insert({
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
-      expires_at: expiresAt.toISOString(),
-      scope: tokenData.scope,
-      token_type: tokenData.token_type ?? 'Bearer',
-    })
+    await pgquery(`
+      INSERT INTO bling_tokens (access_token, refresh_token, expires_at, scope, token_type)
+      VALUES (
+        ${pgesc(tokenData.access_token)},
+        ${pgesc(tokenData.refresh_token)},
+        ${pgesc(expiresAt.toISOString())},
+        ${pgesc(tokenData.scope ?? null)},
+        ${pgesc(tokenData.token_type ?? 'Bearer')}
+      )
+    `)
   }
 }
 

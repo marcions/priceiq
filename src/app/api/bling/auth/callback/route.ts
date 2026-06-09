@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
+import { pgquery, pgqueryone, pgesc } from '@/lib/db/query'
 import { exchangeCode } from '@/lib/bling/client'
 import { saveToken } from '@/lib/bling/tokens'
 
@@ -19,19 +19,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${APP_URL}/sync?bling_error=missing_params`)
   }
 
-  const supabase = await createServiceClient()
-
-  const { data: stateRow } = await (supabase as any)
-    .from('bling_oauth_state')
-    .select('state')
-    .eq('state', state)
-    .single()
+  const stateRow = await pgqueryone<{ state: string }>(
+    `SELECT state FROM bling_oauth_state WHERE state = ${pgesc(state)} LIMIT 1`
+  )
 
   if (!stateRow) {
     return NextResponse.redirect(`${APP_URL}/sync?bling_error=invalid_state`)
   }
 
-  await (supabase as any).from('bling_oauth_state').delete().eq('state', state)
+  await pgquery(`DELETE FROM bling_oauth_state WHERE state = ${pgesc(state)}`)
 
   try {
     const tokenData = await exchangeCode(code)
