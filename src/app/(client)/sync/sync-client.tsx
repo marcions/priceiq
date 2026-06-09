@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { RefreshCw, CheckCircle2, XCircle, Plug, Zap } from 'lucide-react'
+import { RefreshCw, CheckCircle2, XCircle, Plug, Zap, Calculator } from 'lucide-react'
 
 function BlingLogo() {
   return (
@@ -42,6 +42,23 @@ export function SyncClient({ connected }: { connected: boolean }) {
       toast.error(err instanceof Error ? err.message : 'Erro na sincronização', { id: loadingId })
     } finally {
       setSyncing(prev => ({ ...prev, [tipo]: false }))
+    }
+  }
+
+  async function handleAtualizarCustos() {
+    if (syncing['custos']) return
+    setSyncing(prev => ({ ...prev, custos: true }))
+    const loadingId = toast.loading('Calculando custo médio ponderado (CMPC)...')
+    try {
+      const res = await fetch('/api/produtos/atualizar-custos', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erro desconhecido')
+      const semMsg = data.sem_pedidos > 0 ? ` (${data.sem_pedidos} sem dados de pedido)` : ''
+      toast.success(data.message + semMsg, { id: loadingId })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao atualizar custos', { id: loadingId })
+    } finally {
+      setSyncing(prev => ({ ...prev, custos: false }))
     }
   }
 
@@ -150,6 +167,31 @@ export function SyncClient({ connected }: { connected: boolean }) {
           <p className="text-xs text-gray-6 mt-1">Você será redirecionado para autorizar o acesso na sua conta Bling</p>
         </div>
       )}
+
+      {/* Atualização de custos — disponível sempre, independente do Bling */}
+      <div className="space-y-3">
+        <h3 className="font-semibold text-dark dark:text-white">Precificação</h3>
+        <div className="flex items-center justify-between rounded-xl border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark">
+          <div className="flex items-start gap-3">
+            <Calculator className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-medium text-dark dark:text-white">Atualizar Custo de Produtos</p>
+              <p className="text-sm text-gray-6">
+                Recalcula <strong>custo_vigente</strong> de cada produto usando média ponderada (CMPC)
+                dos pedidos de compra importados.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleAtualizarCustos}
+            disabled={!!syncing['custos']}
+            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ml-4 shrink-0"
+          >
+            <Calculator className={`h-4 w-4 ${syncing['custos'] ? 'animate-pulse' : ''}`} />
+            {syncing['custos'] ? 'Calculando...' : 'Atualizar Custos'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
