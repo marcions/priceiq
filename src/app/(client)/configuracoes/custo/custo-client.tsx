@@ -157,7 +157,7 @@ export function CustoClient({ policies }: CustoClientProps) {
 
       {/* Form Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {editingPolicy ? 'Editar Política de Custo' : 'Nova Política de Custo'}

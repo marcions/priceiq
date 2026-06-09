@@ -165,7 +165,7 @@ export function PrecificacaoClient({ policies }: PrecificacaoClientProps) {
 
       {/* Form Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {editingPolicy ? 'Editar Política de Precificação' : 'Nova Política de Precificação'}

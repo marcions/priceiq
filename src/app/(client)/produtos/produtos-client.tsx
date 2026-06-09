@@ -392,7 +392,7 @@ export function ProdutosClient({
 
       {/* Form Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="w-[min(560px,calc(100vw-2rem))] max-h-[90vh] overflow-y-auto overflow-x-hidden">
+        <DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>{editProduto ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
             <DialogDescription>
