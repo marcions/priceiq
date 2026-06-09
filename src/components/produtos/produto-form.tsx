@@ -107,15 +107,16 @@ export function ProdutoForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {/* Identificação */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+      <div className="space-y-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Identificação
         </h3>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
+        {/* SKU + Unidade */}
+        <div className="grid grid-cols-[1fr_100px] gap-3">
+          <div className="space-y-1.5 min-w-0">
             <Label htmlFor="sku">
               SKU <span className="text-destructive">*</span>
             </Label>
@@ -128,24 +129,23 @@ export function ProdutoForm({
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="unidade">Unidade</Label>
             <Select value={unidade} onValueChange={(v) => setUnidade(v ?? 'UN')}>
-              <SelectTrigger id="unidade">
+              <SelectTrigger id="unidade" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {UNIDADES.map((u) => (
-                  <SelectItem key={u} value={u}>
-                    {u}
-                  </SelectItem>
+                  <SelectItem key={u} value={u}>{u}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        <div className="space-y-2">
+        {/* Nome */}
+        <div className="space-y-1.5">
           <Label htmlFor="nome">
             Nome <span className="text-destructive">*</span>
           </Label>
@@ -158,8 +158,9 @@ export function ProdutoForm({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 items-end">
-          <div className="space-y-2">
+        {/* NCM + Ativo */}
+        <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+          <div className="space-y-1.5 min-w-0">
             <Label htmlFor="ncm">NCM</Label>
             <Input
               id="ncm"
@@ -170,9 +171,9 @@ export function ProdutoForm({
             />
           </div>
 
-          <div className="flex items-center gap-3 pb-2">
+          <div className="flex items-center gap-2 pb-0.5">
             <Switch id="ativo" checked={ativo} onCheckedChange={setAtivo} />
-            <Label htmlFor="ativo" className="cursor-pointer">
+            <Label htmlFor="ativo" className="cursor-pointer whitespace-nowrap">
               {ativo ? 'Ativo' : 'Inativo'}
             </Label>
           </div>
@@ -182,75 +183,67 @@ export function ProdutoForm({
       <Separator />
 
       {/* Vínculos */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+      <div className="space-y-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Vínculos
         </h3>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5 min-w-0">
             <Label>Categoria</Label>
             <Select value={categoriaId || 'none'} onValueChange={(v) => setCategoriaId(v === 'none' || !v ? '' : v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sem categoria" />
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Sem categoria" className="truncate" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Sem categoria</SelectItem>
                 {categorias.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.nome}
-                  </SelectItem>
+                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Fornecedor Principal</Label>
+          <div className="space-y-1.5 min-w-0">
+            <Label>Fornecedor</Label>
             <Select value={fornecedorId || 'none'} onValueChange={(v) => setFornecedorId(v === 'none' || !v ? '' : v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sem fornecedor" />
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Sem fornecedor" className="truncate" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Sem fornecedor</SelectItem>
                 {fornecedores.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.nome}
-                  </SelectItem>
+                  <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5 min-w-0">
             <Label>Política de Custo</Label>
             <Select value={costPolicyId || 'none'} onValueChange={(v) => setCostPolicyId(v === 'none' || !v ? '' : v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Política padrão" />
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Padrão da frente" className="truncate" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Política padrão</SelectItem>
+                <SelectItem value="none">Padrão da frente</SelectItem>
                 {costPolicies.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.nome}
-                  </SelectItem>
+                  <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5 min-w-0">
             <Label>Política de Preço</Label>
             <Select value={pricingPolicyId || 'none'} onValueChange={(v) => setPricingPolicyId(v === 'none' || !v ? '' : v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Política padrão" />
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Padrão da frente" className="truncate" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Política padrão</SelectItem>
+                <SelectItem value="none">Padrão da frente</SelectItem>
                 {pricingPolicies.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.nome}
-                  </SelectItem>
+                  <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -261,18 +254,18 @@ export function ProdutoForm({
       <Separator />
 
       {/* Preços manuais */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Preços Manuais (opcional)
+      <div className="space-y-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Preços Manuais <span className="normal-case font-normal">(opcional)</span>
         </h3>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="custo_vigente">Custo Vigente (R$)</Label>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1.5 min-w-0">
+            <Label htmlFor="custo_vigente" className="text-xs">Custo Vigente (R$)</Label>
             <Input
               id="custo_vigente"
               type="number"
-              step="0.01"
+              step="0.0001"
               min="0"
               value={custoVigente}
               onChange={(e) => setCustoVigente(e.target.value)}
@@ -280,8 +273,8 @@ export function ProdutoForm({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="preco_venda">Preço de Venda (R$)</Label>
+          <div className="space-y-1.5 min-w-0">
+            <Label htmlFor="preco_venda" className="text-xs">Preço de Venda (R$)</Label>
             <Input
               id="preco_venda"
               type="number"
@@ -293,8 +286,8 @@ export function ProdutoForm({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="preco_minimo">Preço Mínimo (R$)</Label>
+          <div className="space-y-1.5 min-w-0">
+            <Label htmlFor="preco_minimo" className="text-xs">Preço Mínimo (R$)</Label>
             <Input
               id="preco_minimo"
               type="number"
@@ -308,7 +301,7 @@ export function ProdutoForm({
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-2">
+      <div className="flex justify-end gap-3 pt-1">
         <Button type="submit" disabled={isPending}>
           {isPending ? 'Salvando...' : isEdit ? 'Salvar Alterações' : 'Criar Produto'}
         </Button>
