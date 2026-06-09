@@ -59,7 +59,7 @@ export default async function DashboardPage() {
         produtosComPreco.length
       : null
 
-  const kpis = [
+  const kpiCards = [
     { title: 'Produtos', value: totalProdutos, icon: Package, color: 'text-blue-500', href: '/produtos', sub: 'no catálogo' },
     { title: 'Insumos', value: totalFilamentos, icon: Layers, color: 'text-green-500', href: '/insumos', sub: 'materiais cadastrados' },
     { title: 'Equipamentos', value: totalImpressoras, icon: Printer, color: 'text-purple-500', href: '/equipamentos', sub: `R$ ${fmt(valorParque, 0)} em parque` },
@@ -76,7 +76,7 @@ export default async function DashboardPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {kpis.map((kpi) => (
+        {kpiCards.map((kpi) => (
           <Link
             key={kpi.title}
             href={kpi.href}
