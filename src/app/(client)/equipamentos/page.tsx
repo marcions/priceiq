@@ -5,8 +5,9 @@ import { EquipamentosClient } from './equipamentos-client'
 
 export default async function EquipamentosPage() {
   const equipamentos = await pgquery(`
-    SELECT * FROM impressoras
-    ORDER BY fabricante ASC, modelo ASC
+    SELECT *, COALESCE(quantidade_propria, 0) AS quantidade_propria
+    FROM impressoras
+    ORDER BY quantidade_propria DESC, fabricante ASC, modelo ASC
   `)
 
   return (

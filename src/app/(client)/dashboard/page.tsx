@@ -12,7 +12,11 @@ const getCachedKpis = unstable_cache(
     const [totalProdutosRow, filamentos, impressoras, totalCategoriasRow] = await Promise.all([
       pgqueryone<{ total: string }>(`SELECT COUNT(*) AS total FROM products WHERE ativo = true`),
       pgquery<{ id: string }>(`SELECT id FROM filamentos`),
-      pgquery<{ id: string; valor_equipamento: number | null }>(`SELECT id, valor_equipamento FROM impressoras`),
+      pgquery<{ id: string; valor_equipamento: string | null; quantidade_propria: string }>(`
+        SELECT id, valor_equipamento, COALESCE(quantidade_propria, 0) AS quantidade_propria
+        FROM impressoras
+        WHERE COALESCE(quantidade_propria, 0) > 0
+      `),
       pgqueryone<{ total: string }>(`SELECT COUNT(*) AS total FROM categories`),
     ])
     return { totalProdutosRow, filamentos, impressoras, totalCategoriasRow }
@@ -41,9 +45,9 @@ export default async function DashboardPage() {
 
   const totalProdutos = parseInt(totalProdutosRow?.total ?? '0')
   const totalFilamentos = filamentos.length
-  const totalImpressoras = impressoras.length
+  const totalImpressoras = impressoras.reduce((a, b) => a + (Number(b.quantidade_propria) || 0), 0)
   const totalCategorias = parseInt(totalCategoriasRow?.total ?? '0')
-  const valorParque = impressoras.reduce((a, b) => a + (Number(b.valor_equipamento) || 0), 0)
+  const valorParque = impressoras.reduce((a, b) => a + (Number(b.valor_equipamento) || 0) * (Number(b.quantidade_propria) || 0), 0)
 
   function margem(custo: unknown, preco: unknown): number | null {
     const c = Number(custo), p = Number(preco)
@@ -61,7 +65,7 @@ export default async function DashboardPage() {
   const kpiCards = [
     { title: 'Produtos', value: totalProdutos, icon: Package, color: 'text-blue-500', href: '/produtos', sub: 'no catálogo' },
     { title: 'Insumos', value: totalFilamentos, icon: Layers, color: 'text-green-500', href: '/insumos', sub: 'materiais cadastrados' },
-    { title: 'Equipamentos', value: totalImpressoras, icon: Printer, color: 'text-purple-500', href: '/equipamentos', sub: `R$ ${fmt(valorParque, 0)} em parque` },
+    { title: 'Equipamentos', value: totalImpressoras, icon: Printer, color: 'text-purple-500', href: '/equipamentos', sub: `R$ ${fmt(valorParque, 0)} em parque (unidades)` },
     { title: 'Categorias', value: totalCategorias, icon: Tag, color: 'text-orange-500', href: '/categorias', sub: 'de produto' },
   ]
 
