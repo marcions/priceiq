@@ -1,8 +1,24 @@
 export const dynamic = 'force-dynamic'
 
 import { pgquery, pgqueryone } from '@/lib/db/query'
+import { unstable_cache } from 'next/cache'
 import { Package, Layers, Printer, Tag, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
+
+// KPIs semi-estáticos — revalidam a cada 30s
+const getCachedKpis = unstable_cache(
+  async () => {
+    const [totalProdutosRow, filamentos, impressoras, totalCategoriasRow] = await Promise.all([
+      pgqueryone<{ total: string }>(`SELECT COUNT(*) AS total FROM products WHERE ativo = true`),
+      pgquery<{ id: string }>(`SELECT id FROM filamentos`),
+      pgquery<{ id: string; valor_equipamento: number | null }>(`SELECT id, valor_equipamento FROM impressoras`),
+      pgqueryone<{ total: string }>(`SELECT COUNT(*) AS total FROM categories`),
+    ])
+    return { totalProdutosRow, filamentos, impressoras, totalCategoriasRow }
+  },
+  ['dashboard-kpis'],
+  { revalidate: 30 }
+)
 
 function fmt(v: number | null, frações = 2) {
   if (v == null) return '—'
@@ -15,14 +31,9 @@ function calcMargem(custo: number | null, preco: number | null) {
 }
 
 export default async function DashboardPage() {
-  const [
-    totalProdutosRow,
-    produtos,
-    filamentos,
-    impressoras,
-    totalCategoriasRow,
-  ] = await Promise.all([
-    pgqueryone<{ total: string }>(`SELECT COUNT(*) AS total FROM products WHERE ativo = true`),
+  // KPIs cacheados (30s) + top produtos dinâmicos — em paralelo
+  const [kpis, produtos] = await Promise.all([
+    getCachedKpis(),
     pgquery<{ sku: string; nome: string; custo_vigente: number | null; preco_venda_vigente: number | null; category_nome: string | null }>(`
       SELECT p.sku, p.nome, p.custo_vigente, p.preco_venda_vigente, c.nome AS category_nome
       FROM products p
@@ -31,10 +42,9 @@ export default async function DashboardPage() {
       ORDER BY p.preco_venda_vigente DESC
       LIMIT 8
     `),
-    pgquery<{ id: string }>(`SELECT id FROM filamentos`),
-    pgquery<{ id: string; valor_equipamento: number | null }>(`SELECT id, valor_equipamento FROM impressoras`),
-    pgqueryone<{ total: string }>(`SELECT COUNT(*) AS total FROM categories`),
   ])
+
+  const { totalProdutosRow, filamentos, impressoras, totalCategoriasRow } = kpis
 
   const totalProdutos = parseInt(totalProdutosRow?.total ?? '0')
   const totalFilamentos = filamentos.length
