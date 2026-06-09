@@ -4,10 +4,14 @@ import { Sidebar } from '@/components/Layouts/sidebar'
 import { Header } from '@/components/Layouts/header'
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  // getSession() lê o JWT dos cookies localmente — sem chamada de rede
-  // Evita falha de hairpin NAT no Docker ao chamar a própria URL pública
-  const { data: { session } } = await supabase.auth.getSession()
+  let session = null
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase.auth.getSession()
+    session = data.session
+  } catch (e) {
+    return <pre style={{color:'red',padding:'2rem',whiteSpace:'pre-wrap'}}>{`layout error: ${e instanceof Error ? e.message+'\n'+e.stack : String(e)}`}</pre>
+  }
   if (!session) redirect('/login')
 
   return (
