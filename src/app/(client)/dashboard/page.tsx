@@ -50,7 +50,7 @@ export default async function DashboardPage() {
   const totalFilamentos = filamentos.length
   const totalImpressoras = impressoras.length
   const totalCategorias = parseInt(totalCategoriasRow?.total ?? '0')
-  const valorParque = impressoras.reduce((a, b) => a + (b.valor_equipamento ?? 0), 0)
+  const valorParque = impressoras.reduce((a, b) => a + (Number(b.valor_equipamento) || 0), 0)
 
   const produtosComPreco = produtos.filter((p) => p.custo_vigente && p.preco_venda_vigente)
   const margemMedia =

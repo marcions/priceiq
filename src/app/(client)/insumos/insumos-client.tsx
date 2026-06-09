@@ -26,8 +26,10 @@ const TIPO_COLORS: Record<string, string> = {
   TPU: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
 }
 
-function fmt(v: number, frações = 2) {
-  return v?.toLocaleString('pt-BR', { minimumFractionDigits: frações, maximumFractionDigits: frações }) ?? '—'
+function fmt(v: number | string | null | undefined, frações = 2) {
+  const n = Number(v)
+  if (v == null || isNaN(n)) return '—'
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: frações, maximumFractionDigits: frações })
 }
 
 export function InsumosClient({ insumos }: { insumos: Insumo[] }) {

@@ -32,8 +32,10 @@ const NIVEL_COLORS: Record<string, string> = {
   'Hobby / Entrada': 'bg-gray-100 text-gray-700 dark:bg-dark-3 dark:text-dark-6',
 }
 
-function fmt(v: number, frações = 2) {
-  return v?.toLocaleString('pt-BR', { minimumFractionDigits: frações, maximumFractionDigits: frações }) ?? '—'
+function fmt(v: number | string | null | undefined, frações = 2) {
+  const n = Number(v)
+  if (v == null || isNaN(n)) return '—'
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: frações, maximumFractionDigits: frações })
 }
 
 export function EquipamentosClient({ equipamentos }: { equipamentos: Equipamento[] }) {
@@ -51,9 +53,9 @@ export function EquipamentosClient({ equipamentos }: { equipamentos: Equipamento
   })
 
   // KPIs
-  const custo_medio = filtrados.reduce((a, b) => a + (b.custo_depreciacao_hora + b.custo_energia_hora), 0) / (filtrados.length || 1)
-  const valor_total = filtrados.reduce((a, b) => a + b.valor_equipamento, 0)
-  const potencia_media = filtrados.reduce((a, b) => a + b.potencia_w, 0) / (filtrados.length || 1)
+  const custo_medio = filtrados.reduce((a, b) => a + (Number(b.custo_depreciacao_hora) + Number(b.custo_energia_hora)), 0) / (filtrados.length || 1)
+  const valor_total = filtrados.reduce((a, b) => a + Number(b.valor_equipamento), 0)
+  const potencia_media = filtrados.reduce((a, b) => a + Number(b.potencia_w), 0) / (filtrados.length || 1)
 
   return (
     <div className="space-y-6">
