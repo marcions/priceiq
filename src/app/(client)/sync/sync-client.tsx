@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { RefreshCw, CheckCircle2, XCircle, Plug, Zap, Calculator } from 'lucide-react'
+import { RefreshCw, CheckCircle2, XCircle, Plug, Zap, Calculator, Tag } from 'lucide-react'
 
 function BlingLogo() {
   return (
@@ -181,6 +181,28 @@ export function SyncClient({ connected }: { connected: boolean }) {
           <p className="text-xs text-gray-6 mt-1">Você será redirecionado para autorizar o acesso na sua conta Bling</p>
         </div>
       )}
+
+      {/* Motor de Precificação — lote rápido via Sync */}
+      <div className="space-y-3">
+        <h3 className="font-semibold text-dark dark:text-white">Motor de Precificação</h3>
+        <div className="rounded-xl border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-gray-dark space-y-3">
+          <div className="flex items-center gap-2">
+            <Tag className="h-4 w-4 text-purple-500 shrink-0" />
+            <p className="font-medium text-dark dark:text-white text-sm">Gerar preços em lote → Fila de aprovação</p>
+          </div>
+          <p className="text-xs text-gray-6">
+            Gera sugestões de preço para todos os produtos com custo vigente.
+            Os preços ficam pendentes até você aprovar em <strong>Precificação</strong>.
+          </p>
+          <a
+            href="/precos"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-purple-500 px-4 py-2.5 text-sm font-semibold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-colors"
+          >
+            <Tag className="h-4 w-4" />
+            Ir para Motor de Precificação
+          </a>
+        </div>
+      </div>
 
       {/* Atualização de custos — disponível sempre, independente do Bling */}
       <div className="space-y-3">
