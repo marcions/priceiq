@@ -2,11 +2,16 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from './types'
 
+// Server-side usa URL direta ao Kong (sem passar pelo proxy Next.js)
+// No Docker o container não consegue se chamar via URL pública
+const SUPABASE_SERVER_URL =
+  process.env.SUPABASE_DIRECT_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!
+
 export async function createClient() {
   const cookieStore = await cookies()
 
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    SUPABASE_SERVER_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
@@ -29,7 +34,7 @@ export async function createClient() {
 
 export async function createServiceClient() {
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    SUPABASE_SERVER_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { cookies: { getAll: () => [], setAll: () => {} } }
   )
