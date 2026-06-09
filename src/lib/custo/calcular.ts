@@ -88,7 +88,7 @@ export async function calcularCustoProduto(
       poi.product_id = ${pgesc(productId)}
       AND poi.quantidade::numeric > 0
       AND poi.preco_unitario::numeric > 0
-    ORDER BY po.data_pedido DESC NULLS LAST, po.created_at DESC
+    ORDER BY po.data_pedido DESC NULLS LAST, po.importado_em DESC
   `)
 
   if (itens.length === 0) return null
