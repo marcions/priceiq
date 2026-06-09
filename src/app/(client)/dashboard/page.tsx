@@ -15,6 +15,11 @@ function calcMargem(custo: number | null, preco: number | null) {
 }
 
 export default async function DashboardPage() {
+  // DEBUG: captura erro real para diagnóstico
+  try { await pgqueryone('SELECT 1') } catch(e) {
+    return <pre style={{color:'red',padding:'2rem',whiteSpace:'pre-wrap'}}>{`pgquery error: ${e instanceof Error ? e.message : String(e)}`}</pre>
+  }
+
   const [
     totalProdutosRow,
     produtos,
